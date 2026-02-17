@@ -1,6 +1,6 @@
 services:
   vigil:
-    image: leshicodes/vigil:latest
+    image: leshicodes/vigil:edge
     ports:
       - "8080:8080"
     volumes:
