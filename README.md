@@ -12,7 +12,7 @@ Built with Go on the backend and React + TypeScript on the frontend. The whole t
 docker compose up -d
 ```
 
-That gives you a running instance at `http://localhost:8080` with the mock camera. To use a real camera or enable auth, edit `docker-compose.yml` or pass environment variables:
+That gives you a running instance at http://localhost:8080 with the mock camera. To use a real camera or enable auth, edit docker-compose.yml or pass environment variables:
 
 ```bash
 docker run -d \
@@ -42,7 +42,7 @@ go build -o vigil .
 ./vigil --data-dir=./data --camera=mock --static-dir=./web/dist
 ```
 
-Open `http://localhost:8080` and you should see the dashboard.
+Open http://localhost:8080 and you should see the dashboard.
 
 ## Configuration
 
@@ -54,18 +54,18 @@ Vigil is configured through flags or environment variables. Flags take precedenc
 | `--camera` | `VIGIL_CAMERA` | `mock` | Camera driver (see below) |
 | `--port` | `VIGIL_PORT` | `8080` | HTTP server port |
 | `--static-dir` | `VIGIL_STATIC_DIR` | `./web/dist` | Path to the built frontend |
-| `--api-key` | `VIGIL_API_KEY` | *(empty)* | API key for auth. Empty = auth disabled |
+| `--api-key` | `VIGIL_API_KEY` | (empty) | API key for auth. Empty = auth disabled |
 
 ### Camera Drivers
 
-- **`mock`** - Generates a colored test image with a timestamp. Good for development and verifying the pipeline works.
-- **`ffmpeg`** - Captures a frame from a webcam or video device using FFmpeg. Works on Linux, macOS, and Windows. This is probably what you want for a USB webcam.
-- **`libcamera`** - Uses `libcamera-still` for Raspberry Pi camera modules.
-- **`fswebcam`** - Uses `fswebcam` for basic USB cameras on Linux.
+- **mock** - Generates a colored test image with a timestamp. Good for development and verifying the pipeline works.
+- **ffmpeg** - Captures a frame from a webcam or video device using FFmpeg. Works on Linux, macOS, and Windows. This is probably what you want for a USB webcam.
+- **libcamera** - Uses libcamera-still for Raspberry Pi camera modules.
+- **fswebcam** - Uses fswebcam for basic USB cameras on Linux.
 
 ### Authentication
 
-If you set `VIGIL_API_KEY`, all API endpoints (except `/api/status` and `/api/auth/*`) require an `Authorization: Bearer <key>` header. The web UI will show a login screen and store the key in your browser's local storage.
+If you set VIGIL_API_KEY, all API endpoints (except /api/status and /api/auth/*) require an Authorization: Bearer <key> header. The web UI will show a login screen and store the key in your browser local storage.
 
 If you do not set an API key, auth is completely disabled and everything is open. This is fine for local use behind your own network, but if you expose Vigil to the internet you should set a key.
 
@@ -89,17 +89,17 @@ vigil/
 
 The capture pipeline runs on each scheduled tick:
 1. The scheduler fires based on cron expressions stored in SQLite
-2. The camera driver takes a screenshot and writes it to `data/captures/<date>/<time>.jpg`
+2. The camera driver takes a screenshot and writes it to data/captures/<date>/<time>.jpg
 3. The capture gets logged in the database
 4. If a hook script is configured, it runs with the image path as an argument and stdout is stored
 
 ### The Analysis Hook
 
-The included `hooks/analyze.py` script calculates brightness, sharpness (Laplacian variance), file size, and compares each capture to the previous one to detect motion. Results come back as JSON and get displayed on the dashboard.
+The included hooks/analyze.py script calculates brightness, sharpness (Laplacian variance), file size, and compares each capture to the previous one to detect motion. Results come back as JSON and get displayed on the dashboard.
 
-You do not have to use Python. Any executable that accepts an image path as its first argument and prints to stdout will work. The hook runner detects `.py`, `.rb`, and `.js` files and invokes the appropriate interpreter automatically.
+You do not have to use Python. Any executable that accepts an image path as its first argument and prints to stdout will work. The hook runner detects .py, .rb, and .js files and invokes the appropriate interpreter automatically.
 
-To enable the hook, set the `hook_path` field on your schedule to `hooks/analyze.py` through the Config page.
+To enable the hook, set the hook_path field on your schedule to hooks/analyze.py through the Config page.
 
 #### Python Setup (for the analysis hook)
 
@@ -115,14 +115,14 @@ source .venv/bin/activate
 pip install -r hooks/requirements.txt
 ```
 
-The Go binary will automatically look for `.venv/Scripts/python.exe` (Windows) or `.venv/bin/python3` (Linux) before falling back to the system Python.
+The Go binary will automatically look for .venv/Scripts/python.exe (Windows) or .venv/bin/python3 (Linux) before falling back to the system Python.
 
 ## Docker Details
 
 The Dockerfile uses a multi-stage build:
-1. **Node stage** builds the frontend with Vite
-2. **Go stage** compiles the binary
-3. **Runtime stage** uses `python:3.12-slim`, installs FFmpeg and the Python hook dependencies
+1. Node stage builds the frontend with Vite
+2. Go stage compiles the binary
+3. Runtime stage uses python:3.12-slim, installs FFmpeg and the Python hook dependencies
 
 This means the Docker image works out of the box with the analysis hook. No extra setup needed.
 
@@ -131,7 +131,7 @@ This means the Docker image works out of the box with the analysis hook. No extr
 | Mount Point | Purpose | Required? |
 |-------------|---------|-----------|
 | `/data` | Captures (images), SQLite database, and any runtime state. This is where your images live. If you do not mount this, your captures will be lost when the container restarts. | Yes |
-| `/home/vigil/hooks` | Hook scripts. The image ships with `analyze.py` baked in, but if you want to iterate on your own hooks without rebuilding the image, mount a local directory here. | No |
+| `/home/vigil/hooks` | Hook scripts. The image ships with analyze.py baked in, but if you want to iterate on your own hooks without rebuilding the image, mount a local directory here. | No |
 
 ### Running with Docker
 
@@ -157,7 +157,7 @@ docker run -d \
 
 ### Docker Compose
 
-The included `docker-compose.yml` is a minimal starting point:
+The included docker-compose.yml is a minimal starting point:
 
 ```yaml
 services:
@@ -177,12 +177,12 @@ services:
 
 ## Go Notes
 
-If you are new to Go (like I am), here are some things worth knowing about this codebase:
+If you are new to Go, here are some things worth knowing about this codebase:
 
-- **`internal/` convention** - Packages under `internal/` cannot be imported by other Go modules. This is enforced by the compiler, not just a convention. It keeps the public API surface zero.
-- **`CGO_ENABLED=0`** - The binary is built without cgo, which means it is fully static and can run on any Linux system without shared libraries. This is why we use `modernc.org/sqlite` instead of `mattn/go-sqlite3`.
-- **Chi router** - We use `go-chi/chi` for routing. It is a lightweight router that plays well with the standard `net/http` interfaces.
-- **No frameworks** - There is no web framework. Handlers are plain `http.HandlerFunc`s. Middleware is just function wrapping.
+- **internal/ convention** - Packages under internal/ cannot be imported by other Go modules. This is enforced by the compiler, not just a convention. It keeps the public API surface zero.
+- **CGO_ENABLED=0** - The binary is built without cgo, which means it is fully static and can run on any Linux system without shared libraries. This is why we use modernc.org/sqlite instead of mattn/go-sqlite3.
+- **Chi router** - We use go-chi/chi for routing. It is a lightweight router that plays well with the standard net/http interfaces.
+- **No frameworks** - There is no web framework. Handlers are plain http.HandlerFuncs. Middleware is just function wrapping.
 
 ## Contributing
 

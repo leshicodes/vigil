@@ -111,8 +111,8 @@ export default function Dashboard() {
                                                     Motion
                                                 </span>
                                             )}
-                                            <span className="text-[10px] text-text-muted font-mono">
-                                                🔅{analysis.brightness} · 🔍{analysis.sharpness} · Δ{analysis.change_pct}%
+                                            <span className="text-[10px] text-text-muted font-mono uppercase tracking-tight">
+                                                Brightness: {analysis.brightness} | Sharpness: {analysis.sharpness} | Diff: {analysis.change_pct}%
                                             </span>
                                         </>
                                     )}

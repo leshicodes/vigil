@@ -12,7 +12,7 @@ RUN npx vite build
 # ===========================================================================
 # Stage 2: Build Go binary
 # ===========================================================================
-FROM golang:1.22-alpine AS builder
+FROM golang:alpine AS builder
 
 RUN apk add --no-cache git
 

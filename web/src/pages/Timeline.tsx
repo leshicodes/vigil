@@ -304,7 +304,7 @@ export default function Timeline() {
                                             </span>
                                         )}
                                         <span className="text-text-muted font-mono text-[10px]">
-                                            🔅{a.brightness} · Δ{a.change_pct}%
+                                            Brightness: {a.brightness} · Diff: {a.change_pct}%
                                         </span>
                                     </>
                                 );
