@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/leshicodes/vigil/internal/logger"
 )
 
 // FFmpegCamera captures images using FFmpeg, which can interface with
@@ -66,11 +68,28 @@ func (f *FFmpegCamera) Capture(outputPath string) error {
 	args = append(args, f.ExtraArgs...)
 	args = append(args, outputPath)
 
+	logger.Debug("ffmpeg", "running: ffmpeg %s", strings.Join(args, " "))
+
 	cmd := exec.Command("ffmpeg", args...)
 	output, err := cmd.CombinedOutput()
+
+	if len(output) > 0 {
+		logger.Debug("ffmpeg", "output:\n%s", string(output))
+	}
+
 	if err != nil {
+		logger.Error("ffmpeg", "command failed: %v", err)
 		return fmt.Errorf("ffmpeg failed: %w\noutput: %s", err, string(output))
 	}
+
+	// Check resulting file size.
+	if info, statErr := os.Stat(outputPath); statErr == nil {
+		logger.Info("ffmpeg", "captured %s (%d bytes)", outputPath, info.Size())
+		if info.Size() < 1000 {
+			logger.Warn("ffmpeg", "file is suspiciously small (%d bytes) — may be a black frame", info.Size())
+		}
+	}
+
 	return nil
 }
 

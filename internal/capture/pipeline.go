@@ -2,7 +2,6 @@ package capture
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,6 +10,7 @@ import (
 	"github.com/leshicodes/vigil/internal/camera"
 	"github.com/leshicodes/vigil/internal/db"
 	"github.com/leshicodes/vigil/internal/hook"
+	"github.com/leshicodes/vigil/internal/logger"
 )
 
 // Pipeline orchestrates a single capture event: take a photo, run hooks,
@@ -47,24 +47,27 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	dir := filepath.Join(p.DataDir, "captures", dateDir)
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		log.Printf("[capture] failed to create dir %s: %v", dir, err)
+		logger.Error("capture", "failed to create dir %s: %v", dir, err)
 		return
 	}
 
 	imgPath := filepath.Join(dir, timeFile+".jpg")
 
 	// Get camera driver.
-	log.Printf("[capture] starting capture using driver: %s", sched.CameraID)
+	logger.Info("capture", "starting capture — driver=%s output=%s", sched.CameraID, imgPath)
+	logger.Debug("capture", "schedule details — id=%d cron=%q hook=%q enabled=%v",
+		sched.ID, sched.CronExpr, sched.HookPath, sched.Enabled)
+
 	cam, err := camera.New(sched.CameraID)
 	if err != nil {
-		log.Printf("[capture] camera error: %v", err)
+		logger.Error("capture", "camera init failed for driver %q: %v", sched.CameraID, err)
 		p.logCapture(sched.ID, now, imgPath, "error", fmt.Sprintf("camera init: %v", err))
 		return
 	}
 
 	// Capture image.
 	if err := cam.Capture(imgPath); err != nil {
-		log.Printf("[capture] capture failed: %v", err)
+		logger.Error("capture", "capture failed: %v", err)
 		// Clean up any empty/broken image file.
 		os.Remove(imgPath)
 		p.logCapture(sched.ID, now, imgPath, "error", fmt.Sprintf("capture: %v", err))
@@ -72,14 +75,20 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	}
 
 	// Verify the file actually has content.
-	if info, err := os.Stat(imgPath); err != nil || info.Size() < 100 {
-		log.Printf("[capture] image file missing or too small: %s", imgPath)
+	// A valid JPEG from a webcam is always > 1KB. Anything smaller is garbage.
+	if info, err := os.Stat(imgPath); err != nil || info.Size() < 1000 {
+		size := int64(0)
+		if info != nil {
+			size = info.Size()
+		}
+		logger.Warn("capture", "image file missing or too small (%d bytes): %s", size, imgPath)
 		os.Remove(imgPath)
 		p.logCapture(sched.ID, now, imgPath, "error", "captured image was empty or corrupt")
 		return
 	}
 
-	log.Printf("[capture] saved %s", imgPath)
+	info, _ := os.Stat(imgPath)
+	logger.Info("capture", "saved %s (%d bytes)", imgPath, info.Size())
 
 	// Run hook if configured.
 	timeout := p.HookTimeout
@@ -89,9 +98,9 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	result := hook.Run(sched.HookPath, imgPath, timeout)
 
 	if result.Status == "success" {
-		log.Printf("[capture] hook succeeded for %s", imgPath)
+		logger.Info("capture", "hook succeeded for %s", imgPath)
 	} else if result.Status == "error" {
-		log.Printf("[capture] hook error for %s: %s", imgPath, result.Output)
+		logger.Error("capture", "hook error for %s: %s", imgPath, result.Output)
 	}
 
 	p.logCapture(sched.ID, now, imgPath, result.Status, result.Output)
@@ -109,6 +118,6 @@ func (p *Pipeline) logCapture(schedID int64, ts time.Time, path, status, output 
 		HookOutput: output,
 	})
 	if err != nil {
-		log.Printf("[capture] failed to log capture: %v", err)
+		logger.Error("capture", "failed to log capture to DB: %v", err)
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/leshicodes/vigil/internal/logger"
 )
 
 // FSWebcam captures images using the `fswebcam` CLI tool,
@@ -23,9 +25,17 @@ func (f *FSWebcam) Capture(outputPath string) error {
 		device = os.Getenv("VIGIL_FSWEBCAM_DEVICE")
 	}
 
+	// Delay gives the camera real time to auto-expose/white-balance.
+	// Critical for Logitech cameras on Pi 3B+ USB 2.0.
+	delay := os.Getenv("VIGIL_FSWEBCAM_DELAY")
+	if delay == "" {
+		delay = "3"
+	}
+
 	args := []string{
 		"--no-banner",
 		"--jpeg", "85",
+		"--delay", delay,
 		"--skip", "20",
 	}
 	if device != "" {
@@ -44,10 +54,29 @@ func (f *FSWebcam) Capture(outputPath string) error {
 	args = append(args, f.ExtraArgs...)
 	args = append(args, outputPath)
 
+	logger.Debug("fswebcam", "running: fswebcam %s", strings.Join(args, " "))
+
 	cmd := exec.Command("fswebcam", args...)
 	output, err := cmd.CombinedOutput()
+
+	// Always log output — fswebcam prints device negotiation info (resolution,
+	// format, palette) that is critical for diagnosing black frame issues.
+	if len(output) > 0 {
+		logger.Debug("fswebcam", "output:\n%s", string(output))
+	}
+
 	if err != nil {
+		logger.Error("fswebcam", "command failed: %v", err)
 		return fmt.Errorf("fswebcam failed: %w\noutput: %s", err, string(output))
 	}
+
+	// Check resulting file size.
+	if info, statErr := os.Stat(outputPath); statErr == nil {
+		logger.Info("fswebcam", "captured %s (%d bytes)", outputPath, info.Size())
+		if info.Size() < 1000 {
+			logger.Warn("fswebcam", "file is suspiciously small (%d bytes) — may be a black frame", info.Size())
+		}
+	}
+
 	return nil
 }

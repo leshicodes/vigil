@@ -14,6 +14,7 @@ import (
 	"github.com/leshicodes/vigil/internal/api"
 	"github.com/leshicodes/vigil/internal/capture"
 	"github.com/leshicodes/vigil/internal/db"
+	"github.com/leshicodes/vigil/internal/logger"
 	"github.com/leshicodes/vigil/internal/scheduler"
 )
 
@@ -27,8 +28,10 @@ func main() {
 	)
 	flag.Parse()
 
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("[vigil] starting - data=%s camera=%s port=%s", *dataDir, *camera, *port)
+	// Initialize structured logging.
+	logger.SetLevel(os.Getenv("VIGIL_LOG_LEVEL"))
+	logger.Info("vigil", "starting — data=%s camera=%s port=%s log_level=%s",
+		*dataDir, *camera, *port, logger.GetLevel())
 
 	// Ensure data directory exists.
 	if err := os.MkdirAll(*dataDir, 0755); err != nil {
@@ -42,7 +45,7 @@ func main() {
 		log.Fatalf("open database: %v - this often means the data directory isn't writable by the vigil user", err)
 	}
 	defer database.Close()
-	log.Printf("[vigil] database opened: %s", dbPath)
+	logger.Info("vigil", "database opened: %s", dbPath)
 
 	// Seed a default schedule if none exist.
 	schedules, err := database.ListSchedules()
@@ -58,11 +61,28 @@ func main() {
 		if err != nil {
 			log.Fatalf("seed schedule: %v", err)
 		}
-		log.Printf("[vigil] seeded default schedule (id=%d): every 30 minutes", id)
+		logger.Info("vigil", "seeded default schedule (id=%d): every 30 minutes using %s", id, *camera)
 
 		// Refresh the list.
 		schedules, _ = database.ListSchedules()
 	}
+
+	// Sync schedule camera_id with the configured camera driver.
+	// This prevents the "stale DB" trap where VIGIL_CAMERA=fswebcam is set
+	// but existing schedules still reference the old driver (e.g. "mock").
+	for _, s := range schedules {
+		if s.CameraID != *camera {
+			logger.Warn("vigil", "schedule %d has camera_id=%q but VIGIL_CAMERA=%q — updating to match",
+				s.ID, s.CameraID, *camera)
+			s.CameraID = *camera
+			if err := database.UpdateSchedule(s); err != nil {
+				logger.Error("vigil", "failed to update schedule %d camera_id: %v", s.ID, err)
+			}
+		}
+	}
+
+	// Refresh schedules after potential updates.
+	schedules, _ = database.ListSchedules()
 
 	// Build the capture pipeline.
 	pipeline := &capture.Pipeline{
@@ -72,7 +92,7 @@ func main() {
 
 	// Start the scheduler.
 	sched := scheduler.New(func(s db.Schedule) {
-		log.Printf("[scheduler] triggering capture for schedule %d (driver: %s)", s.ID, s.CameraID)
+		logger.Info("scheduler", "triggering capture for schedule %d (driver: %s)", s.ID, s.CameraID)
 		pipeline.Execute(s)
 	})
 	if err := sched.Load(schedules); err != nil {
@@ -103,16 +123,16 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("[vigil] HTTP server listening on :%s", *port)
+		logger.Info("vigil", "HTTP server listening on :%s", *port)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("http server: %v", err)
 		}
 	}()
 
 	<-done
-	log.Println("[vigil] shutting down...")
+	logger.Info("vigil", "shutting down...")
 	httpServer.Close()
-	log.Println("[vigil] goodbye")
+	logger.Info("vigil", "goodbye")
 }
 
 func envOrDefault(key, def string) string {
