@@ -29,7 +29,7 @@ func (m *MockCamera) Capture(outputPath string) error {
 		}
 	}
 
-	// Draw a simple timestamp indicator — a bright rectangle block whose
+	// Draw a simple timestamp indicator - a bright rectangle block whose
 	// position encodes the current second (0-59) as a visual marker.
 	ts := time.Now()
 	sec := ts.Second()

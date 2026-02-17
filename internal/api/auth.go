@@ -83,7 +83,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set HttpOnly session cookie — browser sends it automatically on every
+	// Set HttpOnly session cookie - browser sends it automatically on every
 	// request, including <img> tags. No key in URLs ever.
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,

@@ -105,7 +105,7 @@ export const api = {
     getCaptureUrl: (filepath: string) => {
         // filepath is like /data/captures/2024-10-27/09-00-00.jpg
         // We need to extract date and filename.
-        // Auth is handled by the session cookie — no key in the URL.
+        // Auth is handled by the session cookie - no key in the URL.
         const parts = filepath.replace(/\\/g, '/').split('/');
         const file = parts[parts.length - 1];
         const date = parts[parts.length - 2];

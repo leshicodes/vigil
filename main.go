@@ -30,7 +30,7 @@ func main() {
 
 	// Initialize structured logging.
 	logger.SetLevel(os.Getenv("VIGIL_LOG_LEVEL"))
-	logger.Info("vigil", "starting — data=%s camera=%s port=%s log_level=%s",
+	logger.Info("vigil", "starting - data=%s camera=%s port=%s log_level=%s",
 		*dataDir, *camera, *port, logger.GetLevel())
 
 	// Ensure data directory exists.
@@ -72,7 +72,7 @@ func main() {
 	// but existing schedules still reference the old driver (e.g. "mock").
 	for _, s := range schedules {
 		if s.CameraID != *camera {
-			logger.Warn("vigil", "schedule %d has camera_id=%q but VIGIL_CAMERA=%q — updating to match",
+			logger.Warn("vigil", "schedule %d has camera_id=%q but VIGIL_CAMERA=%q - updating to match",
 				s.ID, s.CameraID, *camera)
 			s.CameraID = *camera
 			if err := database.UpdateSchedule(s); err != nil {
