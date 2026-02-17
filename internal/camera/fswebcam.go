@@ -20,6 +20,7 @@ func (f *FSWebcam) Capture(outputPath string) error {
 		"-r", "1920x1080",
 		"--no-banner",
 		"--jpeg", "85",
+		"--skip", "20",
 	}
 	if f.Device != "" {
 		args = append(args, "-d", f.Device)

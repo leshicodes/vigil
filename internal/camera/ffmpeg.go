@@ -54,14 +54,15 @@ func (f *FFmpegCamera) Capture(outputPath string) error {
 			args = append(args, strings.Fields(inputArgs)...)
 		} else {
 			// For USB cams on Linux, mjpeg often prevents bandwidth/black frame issues.
-			args = append(args, "-f", "v4l2", "-input_format", "mjpeg", "-video_size", "1280x720")
+			// No hardcoded -video_size to let the camera negotiate.
+			args = append(args, "-f", "v4l2", "-input_format", "mjpeg")
 		}
 		args = append(args, "-i", device)
 	}
 
 	// Warm up the camera. For live streams, -t 1 tells ffmpeg to consume 1s of stream
-	// before seeking with -ss. This is more reliable for webcams.
-	args = append(args, "-t", "1", "-ss", "0.5", "-frames:v", "1", "-q:v", "2")
+	// before seeking with -ss. 2.0s is usually enough for auto-exposure.
+	args = append(args, "-t", "3", "-ss", "2.0", "-frames:v", "1", "-q:v", "2")
 	args = append(args, f.ExtraArgs...)
 	args = append(args, outputPath)
 
