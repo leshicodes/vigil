@@ -2,7 +2,9 @@ package camera
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 )
 
 // FSWebcam captures images using the `fswebcam` CLI tool,
@@ -16,15 +18,29 @@ type FSWebcam struct {
 }
 
 func (f *FSWebcam) Capture(outputPath string) error {
+	device := f.Device
+	if device == "" {
+		device = os.Getenv("VIGIL_FSWEBCAM_DEVICE")
+	}
+
 	args := []string{
-		"-r", "1920x1080",
 		"--no-banner",
 		"--jpeg", "85",
 		"--skip", "20",
 	}
-	if f.Device != "" {
-		args = append(args, "-d", f.Device)
+	if device != "" {
+		args = append(args, "-d", device)
 	}
+
+	// Resolution: allow override via env.
+	if res := os.Getenv("VIGIL_FSWEBCAM_RES"); res != "" {
+		args = append(args, "-r", res)
+	}
+
+	if extra := os.Getenv("VIGIL_FSWEBCAM_ARGS"); extra != "" {
+		args = append(args, strings.Fields(extra)...)
+	}
+
 	args = append(args, f.ExtraArgs...)
 	args = append(args, outputPath)
 

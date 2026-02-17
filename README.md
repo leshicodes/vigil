@@ -186,17 +186,19 @@ To fix this, run this on your host machine:
 sudo chown -R 1000:1000 ./data
 ```
 
-### Camera Device Access
+### Camera Device Access (Black Frames)
 
-If using a real camera driver (like `libcamera` or `fswebcam`) in Docker, you must pass the device to the container:
-```yaml
-services:
-  vigil:
-    # ...
+If you get black frames or your camera indicator doesn't turn on (common on Raspberry Pi 3B+):
+
+1.  **Use fswebcam**: It's more robust for older USB buses. Set `VIGIL_CAMERA=fswebcam`.
+2.  **Pass Devices**: You must pass the device and add the video group in `docker-compose.yml`:
+    ```yaml
     devices:
-      - /dev/video0:/dev/video0 # for fswebcam/ffmpeg
-      - /dev/dma_heap:/dev/dma_heap # for libcamera
-```
+      - "/dev/video0:/dev/video0"
+    group_add:
+      - video
+    ```
+3.  **Check Power**: Adding `max_usb_current=1` to your `/boot/config.txt` and rebooting can help if the camera resets under load.
 
 ## Go Notes
 

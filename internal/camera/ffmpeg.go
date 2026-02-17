@@ -60,9 +60,9 @@ func (f *FFmpegCamera) Capture(outputPath string) error {
 		args = append(args, "-i", device)
 	}
 
-	// Warm up the camera. For live streams, -t 1 tells ffmpeg to consume 1s of stream
+	// Warm up the camera. For live streams, -t 3 tells ffmpeg to consume 3s of stream
 	// before seeking with -ss. 2.0s is usually enough for auto-exposure.
-	args = append(args, "-t", "3", "-ss", "2.0", "-frames:v", "1", "-q:v", "2")
+	args = append(args, "-t", "3", "-ss", "2.0", "-update", "1", "-frames:v", "1", "-q:v", "2")
 	args = append(args, f.ExtraArgs...)
 	args = append(args, outputPath)
 

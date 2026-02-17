@@ -2,7 +2,9 @@ package camera
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 )
 
 // LibCamera captures images using the `libcamera-still` CLI tool,
@@ -19,6 +21,9 @@ func (l *LibCamera) Capture(outputPath string) error {
 		"--immediate",
 		"--width", "1920",
 		"--height", "1080",
+	}
+	if extra := os.Getenv("VIGIL_LIBCAMERA_ARGS"); extra != "" {
+		args = append(args, strings.Fields(extra)...)
 	}
 	args = append(args, l.ExtraArgs...)
 

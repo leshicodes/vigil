@@ -72,6 +72,7 @@ func main() {
 
 	// Start the scheduler.
 	sched := scheduler.New(func(s db.Schedule) {
+		log.Printf("[scheduler] triggering capture for schedule %d (driver: %s)", s.ID, s.CameraID)
 		pipeline.Execute(s)
 	})
 	if err := sched.Load(schedules); err != nil {
