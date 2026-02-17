@@ -37,7 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home vigil
+    && groupadd -g 1000 vigil \
+    && useradd -u 1000 -g vigil --create-home vigil
 
 WORKDIR /home/vigil
 

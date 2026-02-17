@@ -28,18 +28,18 @@ func main() {
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("[vigil] starting — data=%s camera=%s port=%s", *dataDir, *camera, *port)
+	log.Printf("[vigil] starting - data=%s camera=%s port=%s", *dataDir, *camera, *port)
 
 	// Ensure data directory exists.
 	if err := os.MkdirAll(*dataDir, 0755); err != nil {
-		log.Fatalf("create data dir: %v", err)
+		log.Fatalf("create data dir: %v (check permissions)", err)
 	}
 
 	// Open database.
 	dbPath := filepath.Join(*dataDir, "vigil.db")
 	database, err := db.Open(dbPath)
 	if err != nil {
-		log.Fatalf("open database: %v", err)
+		log.Fatalf("open database: %v - this often means the data directory isn't writable by the vigil user", err)
 	}
 	defer database.Close()
 	log.Printf("[vigil] database opened: %s", dbPath)

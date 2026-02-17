@@ -175,6 +175,29 @@ services:
     restart: unless-stopped
 ```
 
+## Troubleshooting
+
+### SQLite "Out of Memory" or Permission Denied
+
+If you see `open database: ... out of memory (14)` in your Docker logs, it usually means the `/data` directory inside the container (mounted from your host) is not writable by the `vigil` user (UID 1000).
+
+To fix this, run this on your host machine:
+```bash
+sudo chown -R 1000:1000 ./data
+```
+
+### Camera Device Access
+
+If using a real camera driver (like `libcamera` or `fswebcam`) in Docker, you must pass the device to the container:
+```yaml
+services:
+  vigil:
+    # ...
+    devices:
+      - /dev/video0:/dev/video0 # for fswebcam/ffmpeg
+      - /dev/dma_heap:/dev/dma_heap # for libcamera
+```
+
 ## Go Notes
 
 If you are new to Go, here are some things worth knowing about this codebase:
