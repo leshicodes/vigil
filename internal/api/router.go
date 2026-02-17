@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/leshicodes/vigil/internal/capture"
 	"github.com/leshicodes/vigil/internal/db"
 	"github.com/leshicodes/vigil/internal/scheduler"
 )
@@ -18,7 +20,9 @@ import (
 type Server struct {
 	DB        *db.DB
 	Scheduler *scheduler.Scheduler
+	Pipeline  *capture.Pipeline
 	DataDir   string
+	StaticDir string
 	StartTime time.Time
 }
 
@@ -28,6 +32,7 @@ func (s *Server) NewRouter() *chi.Mux {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.SetHeader("Content-Type", "application/json"))
+	r.Use(corsMiddleware)
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
@@ -43,21 +48,25 @@ func (s *Server) NewRouter() *chi.Mux {
 
 		r.Get("/captures", s.handleListCaptures)
 		r.Get("/captures/{date}/{file}", s.handleServeCapture)
+		r.Post("/captures/trigger", s.handleTriggerCapture)
+		r.Delete("/captures", s.handleDeleteCaptures)
 	})
 
-	// Static files — serve the frontend SPA (Phase 2).
-	staticDir := filepath.Join(s.DataDir, "..", "web", "dist")
-	if info, err := os.Stat(staticDir); err == nil && info.IsDir() {
-		fileServer := http.FileServer(http.Dir(staticDir))
-		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-			// Try to serve the file; fallback to index.html for SPA routing.
-			path := filepath.Join(staticDir, r.URL.Path)
-			if _, err := os.Stat(path); os.IsNotExist(err) {
-				http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
-				return
-			}
-			fileServer.ServeHTTP(w, r)
-		})
+	// Static files — serve the frontend SPA.
+	if s.StaticDir != "" {
+		if info, err := os.Stat(s.StaticDir); err == nil && info.IsDir() {
+			fileServer := http.FileServer(http.Dir(s.StaticDir))
+			r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
+				w.Header().Del("Content-Type") // Let file server determine it.
+				// Try to serve the file; fallback to index.html for SPA routing.
+				path := filepath.Join(s.StaticDir, req.URL.Path)
+				if _, err := os.Stat(path); os.IsNotExist(err) {
+					http.ServeFile(w, req, filepath.Join(s.StaticDir, "index.html"))
+					return
+				}
+				fileServer.ServeHTTP(w, req)
+			})
+		}
 	}
 
 	return r
@@ -216,6 +225,95 @@ func (s *Server) handleServeCapture(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path)
 }
 
+func (s *Server) handleTriggerCapture(w http.ResponseWriter, r *http.Request) {
+	if s.Pipeline == nil {
+		http.Error(w, `{"error":"pipeline not configured"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Reject if a capture is already in progress.
+	if s.Pipeline.Busy() {
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "capture already in progress",
+		})
+		return
+	}
+
+	// Use the first enabled schedule to determine camera/hook config,
+	// or fall back to a basic mock capture.
+	schedules, _ := s.DB.ListSchedules()
+	var sched db.Schedule
+	found := false
+	for _, sc := range schedules {
+		if sc.Enabled {
+			sched = sc
+			found = true
+			break
+		}
+	}
+	if !found {
+		// Fallback: use mock camera with no hook.
+		sched = db.Schedule{CameraID: "mock", Enabled: true}
+	}
+
+	// Execute the capture in a goroutine so we don't block the response.
+	go s.Pipeline.Execute(sched)
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":    "triggered",
+		"camera_id": sched.CameraID,
+	})
+}
+
+func (s *Server) handleDeleteCaptures(w http.ResponseWriter, r *http.Request) {
+	// Accept IDs as query param (?ids=1,2,3) or JSON body {"ids":[1,2,3]}
+	var ids []int64
+
+	idsParam := r.URL.Query().Get("ids")
+	if idsParam != "" {
+		for _, s := range strings.Split(idsParam, ",") {
+			id, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+			if err == nil {
+				ids = append(ids, id)
+			}
+		}
+	} else {
+		var body struct {
+			IDs []int64 `json:"ids"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, `{"error":"invalid json — expected {\"ids\":[1,2,3]}"}`, http.StatusBadRequest)
+			return
+		}
+		ids = body.IDs
+	}
+
+	if len(ids) == 0 {
+		http.Error(w, `{"error":"no ids provided"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Delete image files from disk before removing DB records.
+	for _, id := range ids {
+		cap, err := s.DB.GetCapture(id)
+		if err != nil || cap == nil {
+			continue
+		}
+		os.Remove(cap.Filepath)
+	}
+
+	count, err := s.DB.DeleteCapturesByIDs(ids)
+	if err != nil {
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"deleted": count,
+	})
+}
+
 // reloadScheduler fetches all schedules from the DB and reloads the cron scheduler.
 func (s *Server) reloadScheduler() {
 	if s.Scheduler == nil {
@@ -226,4 +324,20 @@ func (s *Server) reloadScheduler() {
 		return
 	}
 	s.Scheduler.Load(schedules)
+}
+
+// corsMiddleware allows cross-origin requests from the Vite dev server.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

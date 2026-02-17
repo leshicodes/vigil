@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -255,4 +256,47 @@ func (d *DB) ListCaptures(date string, limit int) ([]CaptureLog, error) {
 		out = append(out, cl)
 	}
 	return out, rows.Err()
+}
+
+// GetCapture returns a single capture log entry by ID.
+func (d *DB) GetCapture(id int64) (*CaptureLog, error) {
+	var cl CaptureLog
+	var ts string
+	err := d.conn.QueryRow(
+		"SELECT id, schedule_id, timestamp, filepath, hook_status, hook_output FROM capture_log WHERE id = ?", id,
+	).Scan(&cl.ID, &cl.ScheduleID, &ts, &cl.Filepath, &cl.HookStatus, &cl.HookOutput)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	cl.Timestamp, _ = time.Parse(time.RFC3339, ts)
+	return &cl, nil
+}
+
+// DeleteCapture removes a capture log entry by ID.
+func (d *DB) DeleteCapture(id int64) error {
+	_, err := d.conn.Exec("DELETE FROM capture_log WHERE id = ?", id)
+	return err
+}
+
+// DeleteCapturesByIDs removes multiple capture log entries by their IDs.
+func (d *DB) DeleteCapturesByIDs(ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	// Build placeholder list: (?, ?, ?)
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	query := "DELETE FROM capture_log WHERE id IN (" + strings.Join(placeholders, ",") + ")"
+	res, err := d.conn.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

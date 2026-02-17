@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/leshicodes/vigil/internal/camera"
@@ -13,15 +14,31 @@ import (
 )
 
 // Pipeline orchestrates a single capture event: take a photo, run hooks,
-// and log the result.
+// and log the result. It serializes access to the camera to prevent
+// concurrent DirectShow/V4L2 conflicts.
 type Pipeline struct {
 	DataDir     string
 	DB          *db.DB
 	HookTimeout time.Duration
+
+	mu sync.Mutex // protects camera access
+}
+
+// Busy returns true if a capture is currently in progress.
+func (p *Pipeline) Busy() bool {
+	if p.mu.TryLock() {
+		p.mu.Unlock()
+		return false
+	}
+	return true
 }
 
 // Execute runs one capture cycle for the given schedule.
+// It acquires a mutex so only one capture runs at a time.
 func (p *Pipeline) Execute(sched db.Schedule) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	now := time.Now()
 
 	// Build output path: /data/captures/YYYY-MM-DD/HH-MM-SS.jpg
@@ -47,7 +64,17 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	// Capture image.
 	if err := cam.Capture(imgPath); err != nil {
 		log.Printf("[capture] capture failed: %v", err)
+		// Clean up any empty/broken image file.
+		os.Remove(imgPath)
 		p.logCapture(sched.ID, now, imgPath, "error", fmt.Sprintf("capture: %v", err))
+		return
+	}
+
+	// Verify the file actually has content.
+	if info, err := os.Stat(imgPath); err != nil || info.Size() < 100 {
+		log.Printf("[capture] image file missing or too small: %s", imgPath)
+		os.Remove(imgPath)
+		p.logCapture(sched.ID, now, imgPath, "error", "captured image was empty or corrupt")
 		return
 	}
 

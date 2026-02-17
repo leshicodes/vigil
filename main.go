@@ -19,9 +19,10 @@ import (
 
 func main() {
 	var (
-		dataDir = flag.String("data-dir", envOrDefault("VIGIL_DATA_DIR", "./data"), "path to data directory")
-		camera  = flag.String("camera", envOrDefault("VIGIL_CAMERA", "mock"), "camera driver: mock, libcamera, fswebcam")
-		port    = flag.String("port", envOrDefault("VIGIL_PORT", "8080"), "HTTP server port")
+		dataDir   = flag.String("data-dir", envOrDefault("VIGIL_DATA_DIR", "./data"), "path to data directory")
+		camera    = flag.String("camera", envOrDefault("VIGIL_CAMERA", "mock"), "camera driver: mock, libcamera, fswebcam, ffmpeg")
+		port      = flag.String("port", envOrDefault("VIGIL_PORT", "8080"), "HTTP server port")
+		staticDir = flag.String("static-dir", envOrDefault("VIGIL_STATIC_DIR", "./web/dist"), "path to frontend static files")
 	)
 	flag.Parse()
 
@@ -82,7 +83,9 @@ func main() {
 	srv := &api.Server{
 		DB:        database,
 		Scheduler: sched,
+		Pipeline:  pipeline,
 		DataDir:   *dataDir,
+		StaticDir: *staticDir,
 		StartTime: time.Now(),
 	}
 

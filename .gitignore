@@ -23,3 +23,5 @@ Thumbs.db
 
 # Dependencies
 /vendor/
+/web/node_modules/
+/web/dist/

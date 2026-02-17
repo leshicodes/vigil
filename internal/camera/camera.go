@@ -19,6 +19,8 @@ func New(driver string) (Camera, error) {
 		return &LibCamera{}, nil
 	case "fswebcam":
 		return &FSWebcam{}, nil
+	case "ffmpeg":
+		return &FFmpegCamera{}, nil
 	default:
 		return nil, fmt.Errorf("unknown camera driver: %q", driver)
 	}
