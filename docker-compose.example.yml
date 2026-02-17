@@ -9,4 +9,9 @@ services:
       # - ./hooks:/home/vigil/hooks
     env_file:
       - .env
+    # For real USB cameras, you MUST pass the device and add the video group:
+    # devices:
+    #   - "/dev/video0:/dev/video0"
+    # group_add:
+    #   - video
     restart: unless-stopped
