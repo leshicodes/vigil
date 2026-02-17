@@ -54,6 +54,7 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	imgPath := filepath.Join(dir, timeFile+".jpg")
 
 	// Get camera driver.
+	log.Printf("[capture] starting capture using driver: %s", sched.CameraID)
 	cam, err := camera.New(sched.CameraID)
 	if err != nil {
 		log.Printf("[capture] camera error: %v", err)

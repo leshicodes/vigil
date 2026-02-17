@@ -35,6 +35,7 @@ FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    fswebcam \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -g 1000 vigil \
@@ -60,4 +61,4 @@ EXPOSE 8080
 VOLUME ["/data"]
 
 ENTRYPOINT ["vigil"]
-CMD ["--data-dir=/data", "--camera=mock", "--static-dir=./web/dist", "--port=8080"]
+CMD ["--data-dir=/data"]

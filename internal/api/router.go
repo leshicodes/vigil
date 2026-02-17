@@ -18,13 +18,14 @@ import (
 
 // Server holds dependencies for the API handlers.
 type Server struct {
-	DB        *db.DB
-	Scheduler *scheduler.Scheduler
-	Pipeline  *capture.Pipeline
-	DataDir   string
-	StaticDir string
-	APIKey    string
-	StartTime time.Time
+	DB            *db.DB
+	Scheduler     *scheduler.Scheduler
+	Pipeline      *capture.Pipeline
+	DataDir       string
+	StaticDir     string
+	APIKey        string
+	DefaultCamera string
+	StartTime     time.Time
 }
 
 // NewRouter creates the chi router with all routes mounted.
@@ -262,8 +263,8 @@ func (s *Server) handleTriggerCapture(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !found {
-		// Fallback: use mock camera with no hook.
-		sched = db.Schedule{CameraID: "mock", Enabled: true}
+		// Fallback: use global default camera with no hook.
+		sched = db.Schedule{CameraID: s.DefaultCamera, Enabled: true}
 	}
 
 	// Execute the capture in a goroutine so we don't block the response.

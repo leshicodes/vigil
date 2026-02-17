@@ -83,13 +83,14 @@ func main() {
 
 	// Start the HTTP server.
 	srv := &api.Server{
-		DB:        database,
-		Scheduler: sched,
-		Pipeline:  pipeline,
-		DataDir:   *dataDir,
-		StaticDir: *staticDir,
-		APIKey:    *apiKey,
-		StartTime: time.Now(),
+		DB:            database,
+		Scheduler:     sched,
+		Pipeline:      pipeline,
+		DataDir:       *dataDir,
+		StaticDir:     *staticDir,
+		APIKey:        *apiKey,
+		DefaultCamera: *camera,
+		StartTime:     time.Now(),
 	}
 
 	httpServer := &http.Server{
