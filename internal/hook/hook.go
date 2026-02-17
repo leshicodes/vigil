@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -20,6 +23,8 @@ type Result struct {
 // Run executes the hook script at scriptPath, passing imagePath as the
 // first argument. It enforces a timeout and captures stdout/stderr.
 // If scriptPath is empty, it returns a "skipped" result.
+//
+// For .py files, it automatically prepends "python" to the command.
 func Run(scriptPath, imagePath string, timeout time.Duration) Result {
 	if scriptPath == "" {
 		return Result{Status: "skipped"}
@@ -32,7 +37,20 @@ func Run(scriptPath, imagePath string, timeout time.Duration) Result {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, scriptPath, imagePath)
+	// Determine how to invoke the script.
+	var cmd *exec.Cmd
+	ext := strings.ToLower(filepath.Ext(scriptPath))
+	switch ext {
+	case ".py":
+		cmd = exec.CommandContext(ctx, findPython(), scriptPath, imagePath)
+	case ".rb":
+		cmd = exec.CommandContext(ctx, "ruby", scriptPath, imagePath)
+	case ".js":
+		cmd = exec.CommandContext(ctx, "node", scriptPath, imagePath)
+	default:
+		cmd = exec.CommandContext(ctx, scriptPath, imagePath)
+	}
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -61,4 +79,20 @@ func Run(scriptPath, imagePath string, timeout time.Duration) Result {
 		Output: combined,
 		Status: "success",
 	}
+}
+
+// findPython returns the path to the Python interpreter, preferring a local
+// .venv if one exists next to the vigil binary.
+func findPython() string {
+	// Check for a local venv (Windows then Linux layout).
+	for _, candidate := range []string{
+		filepath.Join(".venv", "Scripts", "python.exe"),
+		filepath.Join(".venv", "bin", "python3"),
+		filepath.Join(".venv", "bin", "python"),
+	} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return "python"
 }

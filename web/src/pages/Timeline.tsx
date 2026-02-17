@@ -257,8 +257,8 @@ export default function Timeline() {
                                 key={s.value}
                                 onClick={() => setSpeed(s.value)}
                                 className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${speed === s.value
-                                        ? 'bg-accent-cyan/15 text-accent-cyan'
-                                        : 'text-text-muted hover:text-text-secondary'
+                                    ? 'bg-accent-cyan/15 text-accent-cyan'
+                                    : 'text-text-muted hover:text-text-secondary'
                                     }`}
                             >
                                 {s.label}
@@ -292,9 +292,27 @@ export default function Timeline() {
                         <span className="text-text-secondary">
                             {new Date(currentCapture.timestamp).toLocaleString()}
                         </span>
-                        <span className="text-text-muted font-mono">
-                            {currentCapture.filepath.split(/[\\/]/).pop()}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            {(() => {
+                                const a = parseAnalysis(currentCapture.hook_output);
+                                if (!a) return null;
+                                return (
+                                    <>
+                                        {a.motion_detected && (
+                                            <span className="px-1.5 py-0.5 rounded bg-status-warning/20 text-status-warning text-[10px] font-bold">
+                                                MOTION
+                                            </span>
+                                        )}
+                                        <span className="text-text-muted font-mono text-[10px]">
+                                            🔅{a.brightness} · Δ{a.change_pct}%
+                                        </span>
+                                    </>
+                                );
+                            })()}
+                            <span className="text-text-muted font-mono">
+                                {currentCapture.filepath.split(/[\\/]/).pop()}
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}
@@ -309,6 +327,7 @@ export default function Timeline() {
                         {captures.map((cap, idx) => {
                             const isSelected = selectMode && selectedIds.has(cap.id);
                             const isViewing = !selectMode && selectedIdx === idx;
+                            const hasMotion = hasMotionDetected(cap.hook_output);
 
                             return (
                                 <button
@@ -322,10 +341,10 @@ export default function Timeline() {
                                         }
                                     }}
                                     className={`group relative aspect-video rounded-lg overflow-hidden border transition-all duration-200 cursor-pointer ${isViewing
-                                            ? 'border-accent-cyan glow-cyan ring-2 ring-accent-cyan/30'
-                                            : isSelected
-                                                ? 'border-status-error ring-2 ring-status-error/30'
-                                                : 'border-border-subtle hover:border-border-bright'
+                                        ? 'border-accent-cyan glow-cyan ring-2 ring-accent-cyan/30'
+                                        : isSelected
+                                            ? 'border-status-error ring-2 ring-status-error/30'
+                                            : 'border-border-subtle hover:border-border-bright'
                                         }`}
                                 >
                                     <img
@@ -346,10 +365,13 @@ export default function Timeline() {
                                         </div>
                                     )}
 
-                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1">
+                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1 flex items-center justify-between">
                                         <p className="text-[9px] text-white/80 font-mono">
                                             {new Date(cap.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
+                                        {hasMotion && (
+                                            <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse" title="Motion detected" />
+                                        )}
                                     </div>
                                 </button>
                             );
@@ -375,4 +397,33 @@ export default function Timeline() {
             )}
         </div>
     );
+}
+
+// --- Helpers ----------------------------------------------------------------
+
+interface AnalysisData {
+    brightness: number;
+    sharpness: number;
+    resolution: string;
+    file_size_kb: number;
+    change_pct: number;
+    motion_detected: boolean;
+    timestamp: string;
+}
+
+function parseAnalysis(hookOutput: string): AnalysisData | null {
+    if (!hookOutput) return null;
+    try {
+        const firstLine = hookOutput.trim().split('\n')[0];
+        const data = JSON.parse(firstLine);
+        if (typeof data.brightness === 'number') return data as AnalysisData;
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function hasMotionDetected(hookOutput: string): boolean {
+    const a = parseAnalysis(hookOutput);
+    return a?.motion_detected === true;
 }

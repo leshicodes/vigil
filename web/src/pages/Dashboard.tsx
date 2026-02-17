@@ -86,30 +86,47 @@ export default function Dashboard() {
             </div>
 
             {/* Latest Capture Hero */}
-            {latest && (
-                <div className="relative rounded-2xl overflow-hidden border border-border-subtle glow-cyan">
-                    <div className="aspect-video max-h-96 bg-surface-base">
-                        <img
-                            src={api.getCaptureUrl(latest.filepath)}
-                            alt="Latest capture"
-                            className="w-full h-full object-contain bg-black"
-                        />
-                    </div>
-                    <div className="absolute inset-x-0 bottom-0 glass-strong px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-text-primary">Latest Capture</p>
-                                <p className="text-xs text-text-muted">{new Date(latest.timestamp).toLocaleString()}</p>
-                            </div>
-                            <StatusBadge
-                                status={latest.hook_status === 'success' ? 'ok' : latest.hook_status === 'error' ? 'error' : 'offline'}
-                                label={`Hook: ${latest.hook_status}`}
-                                size="sm"
+            {latest && (() => {
+                const analysis = parseAnalysis(latest.hook_output);
+                return (
+                    <div className="relative rounded-2xl overflow-hidden border border-border-subtle glow-cyan">
+                        <div className="aspect-video max-h-96 bg-surface-base">
+                            <img
+                                src={api.getCaptureUrl(latest.filepath)}
+                                alt="Latest capture"
+                                className="w-full h-full object-contain bg-black"
                             />
                         </div>
+                        <div className="absolute inset-x-0 bottom-0 glass-strong px-6 py-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-text-primary">Latest Capture</p>
+                                    <p className="text-xs text-text-muted">{new Date(latest.timestamp).toLocaleString()}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {analysis && (
+                                        <>
+                                            {analysis.motion_detected && (
+                                                <span className="px-2 py-0.5 rounded-full bg-status-warning/20 text-status-warning text-[10px] font-bold uppercase tracking-wider">
+                                                    Motion
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] text-text-muted font-mono">
+                                                🔅{analysis.brightness} · 🔍{analysis.sharpness} · Δ{analysis.change_pct}%
+                                            </span>
+                                        </>
+                                    )}
+                                    <StatusBadge
+                                        status={latest.hook_status === 'success' ? 'ok' : latest.hook_status === 'error' ? 'error' : 'offline'}
+                                        label={`Hook: ${latest.hook_status}`}
+                                        size="sm"
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {!latest && (
                 <div className="rounded-2xl border border-border-subtle bg-surface-card flex items-center justify-center py-20">
@@ -153,15 +170,66 @@ export default function Dashboard() {
                                 {new Date(selectedCapture.timestamp).toLocaleString()}
                             </p>
                             <p className="text-xs text-text-muted mt-1 font-mono">{selectedCapture.filepath}</p>
-                            {selectedCapture.hook_output && (
-                                <pre className="mt-3 p-3 rounded-lg bg-surface-base text-xs text-text-secondary overflow-x-auto font-mono">
-                                    {selectedCapture.hook_output}
-                                </pre>
-                            )}
+                            {selectedCapture.hook_output && (() => {
+                                const a = parseAnalysis(selectedCapture.hook_output);
+                                if (a) {
+                                    return (
+                                        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                            <MetricPill label="Brightness" value={String(a.brightness)} />
+                                            <MetricPill label="Sharpness" value={String(a.sharpness)} />
+                                            <MetricPill label="Change" value={`${a.change_pct}%`} />
+                                            <MetricPill label="Motion" value={a.motion_detected ? 'Yes' : 'No'}
+                                                highlight={a.motion_detected} />
+                                            <MetricPill label="Resolution" value={a.resolution} />
+                                            <MetricPill label="Size" value={`${a.file_size_kb} KB`} />
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <pre className="mt-3 p-3 rounded-lg bg-surface-base text-xs text-text-secondary overflow-x-auto font-mono">
+                                        {selectedCapture.hook_output}
+                                    </pre>
+                                );
+                            })()}
                         </div>
                     </div>
                 )}
             </Modal>
+        </div>
+    );
+}
+
+// --- Helpers ----------------------------------------------------------------
+
+interface AnalysisData {
+    brightness: number;
+    sharpness: number;
+    resolution: string;
+    file_size_kb: number;
+    change_pct: number;
+    motion_detected: boolean;
+    timestamp: string;
+}
+
+function parseAnalysis(hookOutput: string): AnalysisData | null {
+    if (!hookOutput) return null;
+    try {
+        // The hook output may contain stderr after the JSON — take only the first line.
+        const firstLine = hookOutput.trim().split('\n')[0];
+        const data = JSON.parse(firstLine);
+        if (typeof data.brightness === 'number') return data as AnalysisData;
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function MetricPill({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+    return (
+        <div className={`px-3 py-1.5 rounded-lg text-xs font-mono ${highlight ? 'bg-status-warning/15 text-status-warning' : 'bg-surface-base text-text-secondary'
+            }`}>
+            <span className="text-text-muted">{label}:</span>{' '}
+            <span className="font-semibold">{value}</span>
         </div>
     );
 }

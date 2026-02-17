@@ -25,3 +25,7 @@ Thumbs.db
 /vendor/
 /web/node_modules/
 /web/dist/
+
+#Python
+.venv/
+__pycache__
