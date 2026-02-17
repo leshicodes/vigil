@@ -28,6 +28,10 @@ func apiKeyAuth(apiKey string) func(http.Handler) http.Handler {
 			auth := r.Header.Get("Authorization")
 			if strings.HasPrefix(auth, "Bearer ") {
 				token = strings.TrimPrefix(auth, "Bearer ")
+			} else if qKey := r.URL.Query().Get("key"); qKey != "" {
+				// Fallback: accept ?key= for resources loaded by <img>/<video> tags
+				// that can't send Authorization headers.
+				token = qKey
 			}
 
 			if subtle.ConstantTimeCompare([]byte(token), []byte(apiKey)) != 1 {

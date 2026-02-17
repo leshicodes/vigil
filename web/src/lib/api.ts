@@ -107,7 +107,10 @@ export const api = {
         const parts = filepath.replace(/\\/g, '/').split('/');
         const file = parts[parts.length - 1];
         const date = parts[parts.length - 2];
-        return `${BASE}/captures/${date}/${file}`;
+        // Append ?key= for auth since <img> tags can't send Authorization headers.
+        const token = getToken();
+        const qs = token ? `?key=${encodeURIComponent(token)}` : '';
+        return `${BASE}/captures/${date}/${file}${qs}`;
     },
 
     login: (key: string) =>
