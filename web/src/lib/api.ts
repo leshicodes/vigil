@@ -124,3 +124,28 @@ export const api = {
     checkAuth: () =>
         request<{ authenticated: boolean; auth_enabled: boolean }>('/auth/check'),
 };
+
+// --- Image Auth Error Detection ---------------------------------------------
+
+// When an <img> tag gets a 401 (stale cookie, changed API key), it can't
+// redirect to login on its own. This handler checks auth and forces a
+// redirect if the session is invalid. Debounced so multiple broken images
+// don't spam the auth endpoint.
+let _authCheckPending = false;
+export async function handleImageError() {
+    if (_authCheckPending) return;
+    _authCheckPending = true;
+    try {
+        const res = await fetch(`${BASE}/auth/check`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.auth_enabled && !data.authenticated) {
+            clearToken();
+            window.location.href = '/login';
+        }
+    } catch {
+        // Server unreachable — not an auth issue.
+    } finally {
+        // Reset after a short delay to avoid hammering.
+        setTimeout(() => { _authCheckPending = false; }, 5000);
+    }
+}

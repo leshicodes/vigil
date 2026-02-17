@@ -28,6 +28,7 @@ func apiKeyAuth(apiKey string) func(http.Handler) http.Handler {
 			}
 
 			token := ""
+			tokenFromCookie := false
 
 			// 1. Check Authorization: Bearer header.
 			auth := r.Header.Get("Authorization")
@@ -39,10 +40,24 @@ func apiKeyAuth(apiKey string) func(http.Handler) http.Handler {
 			if token == "" {
 				if c, err := r.Cookie(cookieName); err == nil {
 					token = c.Value
+					tokenFromCookie = true
 				}
 			}
 
 			if subtle.ConstantTimeCompare([]byte(token), []byte(apiKey)) != 1 {
+				// If the bad token came from a cookie, clear it so the
+				// browser stops sending it on every request (especially
+				// <img> tags which can't handle 401s gracefully).
+				if tokenFromCookie {
+					http.SetCookie(w, &http.Cookie{
+						Name:     cookieName,
+						Value:    "",
+						Path:     "/",
+						MaxAge:   -1,
+						HttpOnly: true,
+						SameSite: http.SameSiteStrictMode,
+					})
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				json.NewEncoder(w).Encode(map[string]string{
