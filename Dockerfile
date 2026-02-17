@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -g 1000 vigil \
-    && useradd -u 1000 -g vigil --create-home vigil
+    && useradd -u 1000 -g vigil -G video --create-home vigil
 
 WORKDIR /home/vigil
 

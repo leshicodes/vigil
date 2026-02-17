@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -24,6 +25,9 @@ type FFmpegCamera struct {
 func (f *FFmpegCamera) Capture(outputPath string) error {
 	device := f.Device
 	if device == "" {
+		device = os.Getenv("VIGIL_FFMPEG_DEVICE")
+	}
+	if device == "" {
 		// Auto-detect the first video device.
 		detected, err := detectFirstVideoDevice()
 		if err != nil {
@@ -32,19 +36,32 @@ func (f *FFmpegCamera) Capture(outputPath string) error {
 		device = detected
 	}
 
+	inputArgs := os.Getenv("VIGIL_FFMPEG_INPUT_ARGS")
 	var args []string
 	if isWindows() {
-		// DirectShow on Windows: -f dshow -i video="Device Name"
-		// Use rtbufsize to prevent buffer overflow warnings.
-		args = []string{"-y", "-f", "dshow", "-rtbufsize", "100M", "-i", "video=" + device}
+		// DirectShow on Windows
+		args = []string{"-y"}
+		if inputArgs != "" {
+			args = append(args, strings.Fields(inputArgs)...)
+		} else {
+			args = append(args, "-f", "dshow", "-rtbufsize", "100M")
+		}
+		args = append(args, "-i", "video="+device)
 	} else {
-		// V4L2 on Linux: -f v4l2 -i /dev/video0
-		args = []string{"-y", "-f", "v4l2", "-i", device}
+		// V4L2 on Linux
+		args = []string{"-y"}
+		if inputArgs != "" {
+			args = append(args, strings.Fields(inputArgs)...)
+		} else {
+			// For USB cams on Linux, mjpeg often prevents bandwidth/black frame issues.
+			args = append(args, "-f", "v4l2", "-input_format", "mjpeg", "-video_size", "1280x720")
+		}
+		args = append(args, "-i", device)
 	}
 
-	// Skip the first 2 seconds of input to let the webcam auto-expose,
-	// then capture a single frame at high quality.
-	args = append(args, "-ss", "2", "-frames:v", "1", "-q:v", "2")
+	// Warm up the camera. For live streams, -t 1 tells ffmpeg to consume 1s of stream
+	// before seeking with -ss. This is more reliable for webcams.
+	args = append(args, "-t", "1", "-ss", "0.5", "-frames:v", "1", "-q:v", "2")
 	args = append(args, f.ExtraArgs...)
 	args = append(args, outputPath)
 
