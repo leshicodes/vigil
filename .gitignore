@@ -1,0 +1,25 @@
+# IDE / editor
+.claude/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go
+/vigil
+/vigil.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Data (runtime-generated)
+/data/
+vigil.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+/vendor/
