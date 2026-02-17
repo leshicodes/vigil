@@ -29,7 +29,7 @@ func (f *FSWebcam) Capture(outputPath string) error {
 	// Critical for Logitech cameras on Pi 3B+ USB 2.0.
 	delay := os.Getenv("VIGIL_FSWEBCAM_DELAY")
 	if delay == "" {
-		delay = "3"
+		delay = "2"
 	}
 
 	args := []string{

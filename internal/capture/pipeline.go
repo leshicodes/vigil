@@ -1,9 +1,9 @@
 package capture
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -61,16 +61,36 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	cam, err := camera.New(sched.CameraID)
 	if err != nil {
 		logger.Error("capture", "camera init failed for driver %q: %v", sched.CameraID, err)
-		p.logCapture(sched.ID, now, imgPath, "error", fmt.Sprintf("camera init: %v", err))
 		return
 	}
 
-	// Capture image.
-	if err := cam.Capture(imgPath); err != nil {
-		logger.Error("capture", "capture failed: %v", err)
-		// Clean up any empty/broken image file.
+	// Retry logic: the Pi 3B+ USB subsystem can hold /dev/video0 as "busy"
+	// for several seconds after a previous capture. Retry with a delay.
+	maxRetries := 3
+	retryDelay := 5 * time.Second
+	if v := os.Getenv("VIGIL_CAPTURE_RETRIES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			maxRetries = n
+		}
+	}
+
+	var captureErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		captureErr = cam.Capture(imgPath)
+		if captureErr == nil {
+			break
+		}
+		logger.Warn("capture", "attempt %d/%d failed: %v", attempt, maxRetries, captureErr)
+		os.Remove(imgPath) // clean up any partial file
+		if attempt < maxRetries {
+			logger.Info("capture", "retrying in %s...", retryDelay)
+			time.Sleep(retryDelay)
+		}
+	}
+
+	if captureErr != nil {
+		logger.Error("capture", "capture failed after %d attempts — skipping DB entry", maxRetries)
 		os.Remove(imgPath)
-		p.logCapture(sched.ID, now, imgPath, "error", fmt.Sprintf("capture: %v", err))
 		return
 	}
 
@@ -81,9 +101,8 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 		if info != nil {
 			size = info.Size()
 		}
-		logger.Warn("capture", "image file missing or too small (%d bytes): %s", size, imgPath)
+		logger.Warn("capture", "image file missing or too small (%d bytes): %s — skipping DB entry", size, imgPath)
 		os.Remove(imgPath)
-		p.logCapture(sched.ID, now, imgPath, "error", "captured image was empty or corrupt")
 		return
 	}
 
