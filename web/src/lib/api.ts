@@ -26,6 +26,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
     const res = await fetch(`${BASE}${path}`, {
         headers,
+        credentials: 'same-origin', // Include cookies.
         ...options,
     });
 
@@ -103,14 +104,12 @@ export const api = {
 
     getCaptureUrl: (filepath: string) => {
         // filepath is like /data/captures/2024-10-27/09-00-00.jpg
-        // We need to extract date and filename
+        // We need to extract date and filename.
+        // Auth is handled by the session cookie — no key in the URL.
         const parts = filepath.replace(/\\/g, '/').split('/');
         const file = parts[parts.length - 1];
         const date = parts[parts.length - 2];
-        // Append ?key= for auth since <img> tags can't send Authorization headers.
-        const token = getToken();
-        const qs = token ? `?key=${encodeURIComponent(token)}` : '';
-        return `${BASE}/captures/${date}/${file}${qs}`;
+        return `${BASE}/captures/${date}/${file}`;
     },
 
     login: (key: string) =>
@@ -118,6 +117,9 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ key }),
         }),
+
+    logout: () =>
+        request<{ status: string }>('/auth/logout', { method: 'POST' }),
 
     checkAuth: () =>
         request<{ authenticated: boolean; auth_enabled: boolean }>('/auth/check'),

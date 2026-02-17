@@ -40,6 +40,7 @@ func (s *Server) NewRouter() *chi.Mux {
 	r.Route("/api", func(r chi.Router) {
 		// Public routes (no auth required).
 		r.Post("/auth/login", s.handleLogin)
+		r.Post("/auth/logout", s.handleLogout)
 		r.Get("/auth/check", s.handleAuthCheck)
 		r.Get("/status", s.handleStatus)
 

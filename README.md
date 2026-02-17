@@ -56,12 +56,28 @@ Vigil is configured through flags or environment variables. Flags take precedenc
 | `--static-dir` | `VIGIL_STATIC_DIR` | `./web/dist` | Path to the built frontend |
 | `--api-key` | `VIGIL_API_KEY` | (empty) | API key for auth. Empty = auth disabled |
 
+#### Logging & Diagnostics
+
+| Env Var | Default | Description |
+|---------|---------|-------------|
+| `VIGIL_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+
+#### Camera Tuning
+
+| Env Var | Default | Description |
+|---------|---------|-------------|
+| `VIGIL_FSWEBCAM_DEVICE` | (auto) | Video device path, e.g. `/dev/video0` |
+| `VIGIL_FSWEBCAM_RES` | (auto) | Capture resolution, e.g. `1280x960` |
+| `VIGIL_FSWEBCAM_DELAY` | `2` | Seconds to wait for camera auto-exposure before capturing |
+| `VIGIL_FSWEBCAM_ARGS` | (empty) | Extra flags passed to fswebcam |
+| `VIGIL_CAPTURE_RETRIES` | `3` | Max capture attempts before giving up (handles "device busy") |
+
 ### Camera Drivers
 
 - **mock** - Generates a colored test image with a timestamp. Good for development and verifying the pipeline works.
 - **ffmpeg** - Captures a frame from a webcam or video device using FFmpeg. Works on Linux, macOS, and Windows. This is probably what you want for a USB webcam.
 - **libcamera** - Uses libcamera-still for Raspberry Pi camera modules.
-- **fswebcam** - Uses fswebcam for basic USB cameras on Linux.
+- **fswebcam** - Uses fswebcam for basic USB cameras on Linux. Recommended for Raspberry Pi 3B+ — more reliable than FFmpeg on USB 2.0 buses. Configure resolution with `VIGIL_FSWEBCAM_RES`.
 
 ### Authentication
 
@@ -80,6 +96,7 @@ vigil/
     capture/               # Capture pipeline (camera -> disk -> DB -> hook)
     db/                    # SQLite database layer
     hook/                  # Post-capture hook runner
+    logger/                # Structured leveled logging
     scheduler/             # Cron scheduler wrapper
   hooks/
     analyze.py             # Python image analysis hook (optional)
@@ -191,14 +208,17 @@ sudo chown -R 1000:1000 ./data
 If you get black frames or your camera indicator doesn't turn on (common on Raspberry Pi 3B+):
 
 1.  **Use fswebcam**: It's more robust for older USB buses. Set `VIGIL_CAMERA=fswebcam`.
-2.  **Pass Devices**: You must pass the device and add the video group in `docker-compose.yml`:
+2.  **Set a resolution**: Without `VIGIL_FSWEBCAM_RES`, fswebcam defaults to 352x288. Run `v4l2-ctl --list-formats-ext -d /dev/video0` on the Pi to see what your camera supports, then set e.g. `VIGIL_FSWEBCAM_RES=1280x960`.
+3.  **Pass Devices**: You must pass the device and add the video group in `docker-compose.yml`:
     ```yaml
     devices:
       - "/dev/video0:/dev/video0"
     group_add:
       - video
     ```
-3.  **Check Power**: Adding `max_usb_current=1` to your `/boot/config.txt` and rebooting can help if the camera resets under load.
+4.  **Check Power**: Adding `max_usb_current=1` to your `/boot/config.txt` and rebooting can help if the camera resets under load.
+5.  **"Device or resource busy"**: The Pi 3B+ USB subsystem can hold the camera device after a capture. Vigil retries automatically (configurable with `VIGIL_CAPTURE_RETRIES`, default 3). Failed captures are not logged to the database.
+6.  **Enable debug logging**: Set `VIGIL_LOG_LEVEL=DEBUG` to see exactly what fswebcam/ffmpeg negotiates with the camera.
 
 ## Go Notes
 

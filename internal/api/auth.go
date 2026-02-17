@@ -7,8 +7,11 @@ import (
 	"strings"
 )
 
-// apiKeyAuth returns a middleware that checks for a valid API key in the
-// Authorization header. If apiKey is empty, auth is disabled entirely.
+const cookieName = "vigil_session"
+
+// apiKeyAuth returns a middleware that checks for a valid API key.
+// It checks (in order): Authorization header → session cookie.
+// If apiKey is empty, auth is disabled entirely.
 func apiKeyAuth(apiKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,13 +28,18 @@ func apiKeyAuth(apiKey string) func(http.Handler) http.Handler {
 			}
 
 			token := ""
+
+			// 1. Check Authorization: Bearer header.
 			auth := r.Header.Get("Authorization")
 			if strings.HasPrefix(auth, "Bearer ") {
 				token = strings.TrimPrefix(auth, "Bearer ")
-			} else if qKey := r.URL.Query().Get("key"); qKey != "" {
-				// Fallback: accept ?key= for resources loaded by <img>/<video> tags
-				// that can't send Authorization headers.
-				token = qKey
+			}
+
+			// 2. Fallback: check session cookie.
+			if token == "" {
+				if c, err := r.Cookie(cookieName); err == nil {
+					token = c.Value
+				}
 			}
 
 			if subtle.ConstantTimeCompare([]byte(token), []byte(apiKey)) != 1 {
@@ -48,8 +56,7 @@ func apiKeyAuth(apiKey string) func(http.Handler) http.Handler {
 	}
 }
 
-// handleLogin validates the provided API key without requiring the auth
-// middleware. This lets the frontend check credentials before storing them.
+// handleLogin validates the provided API key and sets a session cookie.
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// If auth is disabled, always succeed.
 	if s.APIKey == "" {
@@ -76,9 +83,35 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set HttpOnly session cookie — browser sends it automatically on every
+	// request, including <img> tags. No key in URLs ever.
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    body.Key,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60, // 7 days
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"ok":           true,
 		"auth_enabled": true,
+	})
+}
+
+// handleLogout clears the session cookie.
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "logged out",
 	})
 }
 
@@ -93,10 +126,16 @@ func (s *Server) handleAuthCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check header first, then cookie.
 	token := ""
 	auth := r.Header.Get("Authorization")
 	if strings.HasPrefix(auth, "Bearer ") {
 		token = strings.TrimPrefix(auth, "Bearer ")
+	}
+	if token == "" {
+		if c, err := r.Cookie(cookieName); err == nil {
+			token = c.Value
+		}
 	}
 
 	valid := subtle.ConstantTimeCompare([]byte(token), []byte(s.APIKey)) == 1
