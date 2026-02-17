@@ -1,12 +1,40 @@
 // API client for Vigil backend
 
 const BASE = '/api';
+const TOKEN_KEY = 'vigil_api_key';
+
+export function getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(key: string) {
+    localStorage.setItem(TOKEN_KEY, key);
+}
+
+export function clearToken() {
+    localStorage.removeItem(TOKEN_KEY);
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+    const token = getToken();
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${BASE}${path}`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         ...options,
     });
+
+    if (res.status === 401) {
+        clearToken();
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+    }
+
     if (!res.ok) {
         const body = await res.text();
         throw new Error(`API ${res.status}: ${body}`);
@@ -81,4 +109,13 @@ export const api = {
         const date = parts[parts.length - 2];
         return `${BASE}/captures/${date}/${file}`;
     },
+
+    login: (key: string) =>
+        request<{ ok: boolean; auth_enabled: boolean }>('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ key }),
+        }),
+
+    checkAuth: () =>
+        request<{ authenticated: boolean; auth_enabled: boolean }>('/auth/check'),
 };

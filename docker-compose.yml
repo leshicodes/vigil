@@ -1,12 +1,13 @@
 services:
   vigil:
     build: .
-    container_name: vigil
     ports:
       - "8080:8080"
     volumes:
       - ./data:/data
+      # Uncomment to develop hooks without rebuilding:
+      # - ./hooks:/home/vigil/hooks
     environment:
       - VIGIL_CAMERA=mock
-      - VIGIL_PORT=8080
+      # - VIGIL_API_KEY=changeme
     restart: unless-stopped

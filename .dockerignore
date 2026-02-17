@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+data/
+*.exe
+*.db
+.git/
+.github/
+.claude/
+.agent/
+.gemini/
+node_modules/
+web/dist/
+web/node_modules/

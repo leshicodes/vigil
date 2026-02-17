@@ -23,6 +23,7 @@ func main() {
 		camera    = flag.String("camera", envOrDefault("VIGIL_CAMERA", "mock"), "camera driver: mock, libcamera, fswebcam, ffmpeg")
 		port      = flag.String("port", envOrDefault("VIGIL_PORT", "8080"), "HTTP server port")
 		staticDir = flag.String("static-dir", envOrDefault("VIGIL_STATIC_DIR", "./web/dist"), "path to frontend static files")
+		apiKey    = flag.String("api-key", envOrDefault("VIGIL_API_KEY", ""), "API key for auth (empty = auth disabled)")
 	)
 	flag.Parse()
 
@@ -86,6 +87,7 @@ func main() {
 		Pipeline:  pipeline,
 		DataDir:   *dataDir,
 		StaticDir: *staticDir,
+		APIKey:    *apiKey,
 		StartTime: time.Now(),
 	}
 

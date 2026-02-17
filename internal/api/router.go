@@ -23,6 +23,7 @@ type Server struct {
 	Pipeline  *capture.Pipeline
 	DataDir   string
 	StaticDir string
+	APIKey    string
 	StartTime time.Time
 }
 
@@ -36,20 +37,28 @@ func (s *Server) NewRouter() *chi.Mux {
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
+		// Public routes (no auth required).
+		r.Post("/auth/login", s.handleLogin)
+		r.Get("/auth/check", s.handleAuthCheck)
 		r.Get("/status", s.handleStatus)
 
-		r.Get("/schedules", s.handleListSchedules)
-		r.Post("/schedules", s.handleCreateSchedule)
-		r.Put("/schedules/{id}", s.handleUpdateSchedule)
-		r.Delete("/schedules/{id}", s.handleDeleteSchedule)
+		// Protected routes.
+		r.Group(func(r chi.Router) {
+			r.Use(apiKeyAuth(s.APIKey))
 
-		r.Get("/config", s.handleGetConfig)
-		r.Put("/config", s.handleSetConfig)
+			r.Get("/schedules", s.handleListSchedules)
+			r.Post("/schedules", s.handleCreateSchedule)
+			r.Put("/schedules/{id}", s.handleUpdateSchedule)
+			r.Delete("/schedules/{id}", s.handleDeleteSchedule)
 
-		r.Get("/captures", s.handleListCaptures)
-		r.Get("/captures/{date}/{file}", s.handleServeCapture)
-		r.Post("/captures/trigger", s.handleTriggerCapture)
-		r.Delete("/captures", s.handleDeleteCaptures)
+			r.Get("/config", s.handleGetConfig)
+			r.Put("/config", s.handleSetConfig)
+
+			r.Get("/captures", s.handleListCaptures)
+			r.Get("/captures/{date}/{file}", s.handleServeCapture)
+			r.Post("/captures/trigger", s.handleTriggerCapture)
+			r.Delete("/captures", s.handleDeleteCaptures)
+		})
 	})
 
 	// Static files — serve the frontend SPA.
