@@ -63,7 +63,7 @@ func (s *Server) NewRouter() *chi.Mux {
 		})
 	})
 
-	// Static files — serve the frontend SPA.
+	// Static files - serve the frontend SPA.
 	if s.StaticDir != "" {
 		if info, err := os.Stat(s.StaticDir); err == nil && info.IsDir() {
 			fileServer := http.FileServer(http.Dir(s.StaticDir))
@@ -294,7 +294,7 @@ func (s *Server) handleDeleteCaptures(w http.ResponseWriter, r *http.Request) {
 			IDs []int64 `json:"ids"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, `{"error":"invalid json — expected {\"ids\":[1,2,3]}"}`, http.StatusBadRequest)
+			http.Error(w, `{"error":"invalid json - expected {\"ids\":[1,2,3]}"}`, http.StatusBadRequest)
 			return
 		}
 		ids = body.IDs

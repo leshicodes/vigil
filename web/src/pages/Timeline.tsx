@@ -247,7 +247,7 @@ export default function Timeline() {
 
                     {/* Frame counter */}
                     <span className="text-xs text-text-muted font-mono">
-                        {selectedIdx !== null ? selectedIdx + 1 : '—'} / {captures.length}
+                        {selectedIdx !== null ? selectedIdx + 1 : '-'} / {captures.length}
                     </span>
 
                     {/* Speed controls */}

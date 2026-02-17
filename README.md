@@ -77,7 +77,7 @@ Vigil is configured through flags or environment variables. Flags take precedenc
 - **mock** - Generates a colored test image with a timestamp. Good for development and verifying the pipeline works.
 - **ffmpeg** - Captures a frame from a webcam or video device using FFmpeg. Works on Linux, macOS, and Windows. This is probably what you want for a USB webcam.
 - **libcamera** - Uses libcamera-still for Raspberry Pi camera modules.
-- **fswebcam** - Uses fswebcam for basic USB cameras on Linux. Recommended for Raspberry Pi 3B+ — more reliable than FFmpeg on USB 2.0 buses. Configure resolution with `VIGIL_FSWEBCAM_RES`.
+- **fswebcam** - Uses fswebcam for basic USB cameras on Linux. Recommended for Raspberry Pi 3B+ - more reliable than FFmpeg on USB 2.0 buses. Configure resolution with `VIGIL_FSWEBCAM_RES`.
 
 ### Authentication
 

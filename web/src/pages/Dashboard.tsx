@@ -74,13 +74,13 @@ export default function Dashboard() {
 
             {/* Stats Row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon={Activity} label="Uptime" value={status?.uptime ?? '—'} color="cyan" />
+                <StatCard icon={Activity} label="Uptime" value={status?.uptime ?? '-'} color="cyan" />
                 <StatCard icon={Camera} label="Today" value={`${todayCaptures.length} captures`} color="teal" />
                 <StatCard icon={Clock} label="Schedules" value={`${scheduleCount} active`} color="emerald" />
                 <StatCard
                     icon={CalendarDays}
                     label="Last Capture"
-                    value={latest ? new Date(latest.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    value={latest ? new Date(latest.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                     color="blue"
                 />
             </div>
@@ -214,7 +214,7 @@ interface AnalysisData {
 function parseAnalysis(hookOutput: string): AnalysisData | null {
     if (!hookOutput) return null;
     try {
-        // The hook output may contain stderr after the JSON — take only the first line.
+        // The hook output may contain stderr after the JSON - take only the first line.
         const firstLine = hookOutput.trim().split('\n')[0];
         const data = JSON.parse(firstLine);
         if (typeof data.brightness === 'number') return data as AnalysisData;

@@ -86,7 +86,7 @@ func (f *FFmpegCamera) Capture(outputPath string) error {
 	if info, statErr := os.Stat(outputPath); statErr == nil {
 		logger.Info("ffmpeg", "captured %s (%d bytes)", outputPath, info.Size())
 		if info.Size() < 1000 {
-			logger.Warn("ffmpeg", "file is suspiciously small (%d bytes) — may be a black frame", info.Size())
+			logger.Warn("ffmpeg", "file is suspiciously small (%d bytes) - may be a black frame", info.Size())
 		}
 	}
 
