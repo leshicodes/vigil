@@ -26,6 +26,9 @@ Thumbs.db
 /web/node_modules/
 /web/dist/
 
-#Python
+# Python
 .venv/
 __pycache__
+
+# Docker
+.env

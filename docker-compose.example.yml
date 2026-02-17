@@ -1,13 +1,12 @@
 services:
   vigil:
-    build: .
+    image: leshicodes/vigil:latest
     ports:
       - "8080:8080"
     volumes:
       - ./data:/data
       # Uncomment to develop hooks without rebuilding:
       # - ./hooks:/home/vigil/hooks
-    environment:
-      - VIGIL_CAMERA=ffmpeg
-      # - VIGIL_API_KEY=changeme
+    env_file:
+      - .env
     restart: unless-stopped
