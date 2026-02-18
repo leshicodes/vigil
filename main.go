@@ -16,6 +16,7 @@ import (
 	"github.com/leshicodes/vigil/internal/db"
 	"github.com/leshicodes/vigil/internal/logger"
 	"github.com/leshicodes/vigil/internal/scheduler"
+	"github.com/leshicodes/vigil/internal/tz"
 )
 
 func main() {
@@ -32,6 +33,7 @@ func main() {
 	logger.SetLevel(os.Getenv("VIGIL_LOG_LEVEL"))
 	logger.Info("vigil", "starting - data=%s camera=%s port=%s log_level=%s",
 		*dataDir, *camera, *port, logger.GetLevel())
+	logger.Info("vigil", "timezone=%s", tz.Name())
 
 	// Ensure data directory exists.
 	if err := os.MkdirAll(*dataDir, 0755); err != nil {

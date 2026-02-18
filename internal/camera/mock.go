@@ -8,6 +8,8 @@ import (
 	"image/jpeg"
 	"os"
 	"time"
+
+	"github.com/leshicodes/vigil/internal/tz"
 )
 
 // MockCamera generates a synthetic test image with a timestamp.
@@ -31,7 +33,7 @@ func (m *MockCamera) Capture(outputPath string) error {
 
 	// Draw a simple timestamp indicator - a bright rectangle block whose
 	// position encodes the current second (0-59) as a visual marker.
-	ts := time.Now()
+	ts := time.Now().In(tz.Location())
 	sec := ts.Second()
 	blockX := (sec * (width - 40)) / 59
 	for dy := 0; dy < 20; dy++ {

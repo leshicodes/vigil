@@ -61,6 +61,7 @@ Vigil is configured through flags or environment variables. Flags take precedenc
 | Env Var | Default | Description |
 |---------|---------|-------------|
 | `VIGIL_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `TZ` | `UTC` | IANA timezone for capture timestamps and directory names (e.g. `America/Chicago`). Defaults to UTC. |
 
 #### Camera Tuning
 

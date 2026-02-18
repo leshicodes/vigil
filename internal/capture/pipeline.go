@@ -11,6 +11,7 @@ import (
 	"github.com/leshicodes/vigil/internal/db"
 	"github.com/leshicodes/vigil/internal/hook"
 	"github.com/leshicodes/vigil/internal/logger"
+	"github.com/leshicodes/vigil/internal/tz"
 )
 
 // Pipeline orchestrates a single capture event: take a photo, run hooks,
@@ -39,7 +40,7 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	now := time.Now()
+	now := time.Now().In(tz.Location())
 
 	// Build output path: /data/captures/YYYY-MM-DD/HH-MM-SS.jpg
 	dateDir := now.Format("2006-01-02")

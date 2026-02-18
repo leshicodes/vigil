@@ -215,7 +215,7 @@ func (d *DB) DeleteSchedule(id int64) error {
 func (d *DB) LogCapture(log CaptureLog) (int64, error) {
 	res, err := d.conn.Exec(
 		"INSERT INTO capture_log (schedule_id, timestamp, filepath, hook_status, hook_output) VALUES (?, ?, ?, ?, ?)",
-		log.ScheduleID, log.Timestamp.UTC().Format(time.RFC3339), log.Filepath, log.HookStatus, log.HookOutput,
+		log.ScheduleID, log.Timestamp.Format(time.RFC3339), log.Filepath, log.HookStatus, log.HookOutput,
 	)
 	if err != nil {
 		return 0, err
