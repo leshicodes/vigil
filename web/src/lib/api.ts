@@ -26,6 +26,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
     const res = await fetch(`${BASE}${path}`, {
         headers,
+        credentials: 'same-origin', // Include cookies.
         ...options,
     });
 
@@ -103,14 +104,12 @@ export const api = {
 
     getCaptureUrl: (filepath: string) => {
         // filepath is like /data/captures/2024-10-27/09-00-00.jpg
-        // We need to extract date and filename
+        // We need to extract date and filename.
+        // Auth is handled by the session cookie - no key in the URL.
         const parts = filepath.replace(/\\/g, '/').split('/');
         const file = parts[parts.length - 1];
         const date = parts[parts.length - 2];
-        // Append ?key= for auth since <img> tags can't send Authorization headers.
-        const token = getToken();
-        const qs = token ? `?key=${encodeURIComponent(token)}` : '';
-        return `${BASE}/captures/${date}/${file}${qs}`;
+        return `${BASE}/captures/${date}/${file}`;
     },
 
     login: (key: string) =>
@@ -119,6 +118,34 @@ export const api = {
             body: JSON.stringify({ key }),
         }),
 
+    logout: () =>
+        request<{ status: string }>('/auth/logout', { method: 'POST' }),
+
     checkAuth: () =>
         request<{ authenticated: boolean; auth_enabled: boolean }>('/auth/check'),
 };
+
+// --- Image Auth Error Detection ---------------------------------------------
+
+// When an <img> tag gets a 401 (stale cookie, changed API key), it can't
+// redirect to login on its own. This handler checks auth and forces a
+// redirect if the session is invalid. Debounced so multiple broken images
+// don't spam the auth endpoint.
+let _authCheckPending = false;
+export async function handleImageError() {
+    if (_authCheckPending) return;
+    _authCheckPending = true;
+    try {
+        const res = await fetch(`${BASE}/auth/check`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.auth_enabled && !data.authenticated) {
+            clearToken();
+            window.location.href = '/login';
+        }
+    } catch {
+        // Server unreachable — not an auth issue.
+    } finally {
+        // Reset after a short delay to avoid hammering.
+        setTimeout(() => { _authCheckPending = false; }, 5000);
+    }
+}

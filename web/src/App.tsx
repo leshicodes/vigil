@@ -6,7 +6,7 @@ import Timeline from './pages/Timeline';
 import Config from './pages/Config';
 import Login from './pages/Login';
 import ToastContainer from './components/Toast';
-import { api, getToken } from './lib/api';
+import { api, getToken, clearToken } from './lib/api';
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'no-auth';
 
@@ -45,6 +45,12 @@ function AppRoutes() {
     navigate('/');
   };
 
+  const handleLogout = () => {
+    clearToken();
+    setAuthState('unauthenticated');
+    navigate('/login');
+  };
+
   if (authState === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-base">
@@ -54,6 +60,7 @@ function AppRoutes() {
   }
 
   const needsAuth = authState === 'unauthenticated';
+  const authEnabled = authState === 'authenticated'; // Only show logout when auth is active
 
   return (
     <Routes>
@@ -62,7 +69,7 @@ function AppRoutes() {
           ? <Login onSuccess={handleLoginSuccess} />
           : <Navigate to="/" replace />
       } />
-      <Route element={needsAuth ? <Navigate to="/login" replace /> : <Layout />}>
+      <Route element={needsAuth ? <Navigate to="/login" replace /> : <Layout onLogout={authEnabled ? handleLogout : undefined} />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/timeline" element={<Timeline />} />
         <Route path="/config" element={<Config />} />
@@ -81,3 +88,4 @@ function App() {
 }
 
 export default App;
+

@@ -1,4 +1,4 @@
-import { api } from '../lib/api';
+import { api, handleImageError } from '../lib/api';
 
 interface CaptureCardProps {
     filepath: string;
@@ -24,6 +24,7 @@ export default function CaptureCard({ filepath, timestamp, hookStatus, onClick }
                     alt={`Capture at ${timeStr}`}
                     className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-300"
                     loading="lazy"
+                    onError={handleImageError}
                 />
             </div>
 
@@ -38,8 +39,8 @@ export default function CaptureCard({ filepath, timestamp, hookStatus, onClick }
                 </div>
                 {hookStatus !== 'skipped' && (
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${hookStatus === 'success'
-                            ? 'bg-status-ok/20 text-status-ok'
-                            : 'bg-status-error/20 text-status-error'
+                        ? 'bg-status-ok/20 text-status-ok'
+                        : 'bg-status-error/20 text-status-error'
                         }`}>
                         {hookStatus}
                     </span>

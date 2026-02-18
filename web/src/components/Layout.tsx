@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Clock, Settings, Eye, Wifi, WifiOff } from 'lucide-react';
-import { api } from '../lib/api';
+import { LayoutDashboard, Clock, Settings, Eye, Wifi, WifiOff, LogOut } from 'lucide-react';
+import { api, clearToken } from '../lib/api';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -9,7 +9,11 @@ const navItems = [
     { to: '/config', icon: Settings, label: 'Config' },
 ];
 
-export default function Layout() {
+interface LayoutProps {
+    onLogout?: () => void;
+}
+
+export default function Layout({ onLogout }: LayoutProps) {
     const [online, setOnline] = useState(false);
     const [uptime, setUptime] = useState('');
 
@@ -27,6 +31,16 @@ export default function Layout() {
         const id = setInterval(check, 10_000);
         return () => clearInterval(id);
     }, []);
+
+    const handleLogout = async () => {
+        try {
+            await api.logout();
+        } catch {
+            // Server might be unreachable — clear locally anyway.
+        }
+        clearToken();
+        if (onLogout) onLogout();
+    };
 
     return (
         <div className="flex h-screen overflow-hidden">
@@ -64,7 +78,7 @@ export default function Layout() {
                 </nav>
 
                 {/* Status footer */}
-                <div className="px-4 py-4 border-t border-border-subtle">
+                <div className="px-4 py-4 border-t border-border-subtle space-y-3">
                     <div className="glass rounded-lg px-3 py-2.5 flex items-center gap-2.5">
                         <div className="relative">
                             {online ? (
@@ -82,6 +96,16 @@ export default function Layout() {
                             )}
                         </div>
                     </div>
+
+                    {onLogout && (
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-muted hover:text-status-error hover:bg-status-error/10 transition-colors"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Logout
+                        </button>
+                    )}
                 </div>
             </aside>
 
@@ -112,3 +136,4 @@ export default function Layout() {
         </div>
     );
 }
+

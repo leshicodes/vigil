@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Vigil Analysis Hook — Post-capture image analysis.
+Vigil Analysis Hook - Post-capture image analysis.
 
 Usage:  python analyze.py <image_path>
 
@@ -9,13 +9,13 @@ change detection relative to the previous capture in the same
 date directory.
 
 Metrics:
-  brightness     – Mean pixel luminance (0–255)
-  sharpness      – Laplacian variance (higher = sharper)
-  resolution     – "WxH"
-  file_size_kb   – File size in KB
-  change_pct     – % of pixels that changed vs previous capture (0–100)
-  motion_detected– True if change_pct > threshold
-  timestamp      – ISO 8601 analysis time
+  brightness     - Mean pixel luminance (0-255)
+  sharpness      - Laplacian variance (higher = sharper)
+  resolution     - "WxH"
+  file_size_kb   - File size in KB
+  change_pct     - % of pixels that changed vs previous capture (0-100)
+  motion_detected- True if change_pct > threshold
+  timestamp      - ISO 8601 analysis time
 """
 
 import json
@@ -33,7 +33,7 @@ from PIL import Image
 # Minimum % of pixels that must differ to count as motion.
 MOTION_THRESHOLD = 5.0
 
-# Per-pixel intensity difference threshold (0–255) to count a pixel as "changed".
+# Per-pixel intensity difference threshold (0-255) to count a pixel as "changed".
 PIXEL_DIFF_THRESHOLD = 30
 
 # Maximum dimension to resize images to for comparison (speed optimization).
@@ -43,12 +43,12 @@ COMPARE_MAX_DIM = 640
 # --- Analysis Functions ------------------------------------------------------
 
 def calc_brightness(gray: np.ndarray) -> float:
-    """Mean pixel brightness (0–255)."""
+    """Mean pixel brightness (0-255)."""
     return round(float(np.mean(gray)), 1)
 
 
 def calc_sharpness(gray: np.ndarray) -> float:
-    """Laplacian variance — higher means sharper."""
+    """Laplacian variance - higher means sharper."""
     lap = cv2.Laplacian(gray, cv2.CV_64F)
     return round(float(lap.var()), 1)
 

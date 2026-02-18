@@ -10,6 +10,7 @@ services:
     environment:
       - VIGIL_CAMERA=ffmpeg
       # - VIGIL_API_KEY=changeme
+      - TZ=America/Chicago
       # - VIGIL_FFMPEG_INPUT_ARGS=-f v4l2 -input_format mjpeg -video_size 1280x720
     # For real USB cameras, you MUST pass the device and add the video group:
     # devices:

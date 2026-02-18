@@ -59,7 +59,7 @@ func (f *FSWebcam) Capture(outputPath string) error {
 	cmd := exec.Command("fswebcam", args...)
 	output, err := cmd.CombinedOutput()
 
-	// Always log output — fswebcam prints device negotiation info (resolution,
+	// Always log output - fswebcam prints device negotiation info (resolution,
 	// format, palette) that is critical for diagnosing black frame issues.
 	if len(output) > 0 {
 		logger.Debug("fswebcam", "output:\n%s", string(output))
@@ -74,7 +74,7 @@ func (f *FSWebcam) Capture(outputPath string) error {
 	if info, statErr := os.Stat(outputPath); statErr == nil {
 		logger.Info("fswebcam", "captured %s (%d bytes)", outputPath, info.Size())
 		if info.Size() < 1000 {
-			logger.Warn("fswebcam", "file is suspiciously small (%d bytes) — may be a black frame", info.Size())
+			logger.Warn("fswebcam", "file is suspiciously small (%d bytes) - may be a black frame", info.Size())
 		}
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/leshicodes/vigil/internal/db"
 	"github.com/leshicodes/vigil/internal/hook"
 	"github.com/leshicodes/vigil/internal/logger"
+	"github.com/leshicodes/vigil/internal/tz"
 )
 
 // Pipeline orchestrates a single capture event: take a photo, run hooks,
@@ -39,7 +40,7 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	now := time.Now()
+	now := time.Now().In(tz.Location())
 
 	// Build output path: /data/captures/YYYY-MM-DD/HH-MM-SS.jpg
 	dateDir := now.Format("2006-01-02")
@@ -54,8 +55,8 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	imgPath := filepath.Join(dir, timeFile+".jpg")
 
 	// Get camera driver.
-	logger.Info("capture", "starting capture — driver=%s output=%s", sched.CameraID, imgPath)
-	logger.Debug("capture", "schedule details — id=%d cron=%q hook=%q enabled=%v",
+	logger.Info("capture", "starting capture - driver=%s output=%s", sched.CameraID, imgPath)
+	logger.Debug("capture", "schedule details - id=%d cron=%q hook=%q enabled=%v",
 		sched.ID, sched.CronExpr, sched.HookPath, sched.Enabled)
 
 	cam, err := camera.New(sched.CameraID)
@@ -89,7 +90,7 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 	}
 
 	if captureErr != nil {
-		logger.Error("capture", "capture failed after %d attempts — skipping DB entry", maxRetries)
+		logger.Error("capture", "capture failed after %d attempts - skipping DB entry", maxRetries)
 		os.Remove(imgPath)
 		return
 	}
@@ -101,7 +102,7 @@ func (p *Pipeline) Execute(sched db.Schedule) {
 		if info != nil {
 			size = info.Size()
 		}
-		logger.Warn("capture", "image file missing or too small (%d bytes): %s — skipping DB entry", size, imgPath)
+		logger.Warn("capture", "image file missing or too small (%d bytes): %s - skipping DB entry", size, imgPath)
 		os.Remove(imgPath)
 		return
 	}
