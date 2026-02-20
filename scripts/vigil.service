@@ -1,0 +1,17 @@
+[Unit]
+Description=Vigil Surveillance
+After=network.target
+
+[Service]
+User=jjambrose1s
+Group=video
+Type=simple
+Environment="VIGIL_CAMERA=libcamera"
+Environment="TZ=America/Chicago"
+WorkingDirectory=/home/jjambrose1s/vigil
+ExecStart=/home/jjambrose1s/vigil/vigil --data-dir=/home/jjambrose1s/vigil/data --port=8080
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -59,6 +59,7 @@ func (s *Server) NewRouter() *chi.Mux {
 			r.Get("/captures", s.handleListCaptures)
 			r.Get("/captures/{date}/{file}", s.handleServeCapture)
 			r.Post("/captures/trigger", s.handleTriggerCapture)
+			r.Post("/captures/export", s.handleExportCaptures)
 			r.Delete("/captures", s.handleDeleteCaptures)
 		})
 	})

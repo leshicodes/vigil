@@ -275,6 +275,37 @@ func (d *DB) GetCapture(id int64) (*CaptureLog, error) {
 	return &cl, nil
 }
 
+// GetCapturesByIDs returns multiple capture log entries by their IDs.
+func (d *DB) GetCapturesByIDs(ids []int64) ([]CaptureLog, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	query := "SELECT id, schedule_id, timestamp, filepath, hook_status, hook_output FROM capture_log WHERE id IN (" + strings.Join(placeholders, ",") + ") ORDER BY timestamp ASC"
+	rows, err := d.conn.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []CaptureLog
+	for rows.Next() {
+		var cl CaptureLog
+		var ts string
+		if err := rows.Scan(&cl.ID, &cl.ScheduleID, &ts, &cl.Filepath, &cl.HookStatus, &cl.HookOutput); err != nil {
+			return nil, err
+		}
+		cl.Timestamp, _ = time.Parse(time.RFC3339, ts)
+		out = append(out, cl)
+	}
+	return out, rows.Err()
+}
+
 // DeleteCapture removes a capture log entry by ID.
 func (d *DB) DeleteCapture(id int64) error {
 	_, err := d.conn.Exec("DELETE FROM capture_log WHERE id = ?", id)

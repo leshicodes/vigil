@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, SkipBack, SkipForward, Trash2, CheckSquare, Square, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, SkipBack, SkipForward, Trash2, CheckSquare, Square, XCircle, Download } from 'lucide-react';
 import { api, type CaptureLog } from '../lib/api';
 import { toast } from '../components/Toast';
 
@@ -16,6 +16,9 @@ export default function Timeline() {
     const [selectMode, setSelectMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [deleting, setDeleting] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [exportFormat, setExportFormat] = useState<'mp4' | 'gif'>('mp4');
+    const [includeTimecode, setIncludeTimecode] = useState(true);
 
     const fetchCaptures = useCallback(async () => {
         setLoading(true);
@@ -105,6 +108,23 @@ export default function Timeline() {
         setDeleting(false);
     };
 
+    const handleExport = async () => {
+        if (selectedIds.size < 2) {
+            toast('error', 'Select at least 2 captures to export a timelapse');
+            return;
+        }
+        setExporting(true);
+        try {
+            toast('success', `Compiling timelapse from ${selectedIds.size} captures...`);
+            await api.exportCaptures(Array.from(selectedIds), exportFormat, includeTimecode);
+            toast('success', `Export completed!`);
+            exitSelectMode();
+        } catch (err) {
+            toast('error', `Export failed: ${err}`);
+        }
+        setExporting(false);
+    };
+
     const currentCapture = selectedIdx !== null ? captures[selectedIdx] : null;
 
     const speeds = [
@@ -183,10 +203,35 @@ export default function Timeline() {
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-3 ml-auto">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={includeTimecode}
+                                onChange={(e) => setIncludeTimecode(e.target.checked)}
+                                className="rounded border-border-default text-accent-cyan focus:ring-accent-cyan cursor-pointer"
+                            />
+                            Timestamp
+                        </label>
+                        <select
+                            value={exportFormat}
+                            onChange={(e) => setExportFormat(e.target.value as 'mp4' | 'gif')}
+                            className="px-2 py-1.5 rounded-lg bg-surface-card border border-border-default text-text-primary text-sm font-medium focus:outline-none focus:border-accent-cyan cursor-pointer"
+                        >
+                            <option value="mp4">MP4</option>
+                            <option value="gif">GIF</option>
+                        </select>
+                        <button
+                            onClick={handleExport}
+                            disabled={selectedIds.size < 2 || exporting || deleting}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent-cyan/15 text-accent-cyan text-sm font-medium hover:bg-accent-cyan/25 transition-colors disabled:opacity-40"
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            {exporting ? 'Exporting...' : `Export (${selectedIds.size})`}
+                        </button>
                         <button
                             onClick={handleDelete}
-                            disabled={selectedIds.size === 0 || deleting}
+                            disabled={selectedIds.size === 0 || deleting || exporting}
                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-status-error/15 text-status-error text-sm font-medium hover:bg-status-error/25 transition-colors disabled:opacity-40"
                         >
                             <Trash2 className="w-3.5 h-3.5" />

@@ -102,6 +102,51 @@ export const api = {
             body: JSON.stringify({ ids }),
         }),
 
+    exportCaptures: async (ids: number[], format: 'mp4' | 'gif' = 'mp4', include_timecode: boolean = false) => {
+        const token = getToken();
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch(`${BASE}/captures/export`, {
+            method: 'POST',
+            headers,
+            credentials: 'same-origin',
+            body: JSON.stringify({ ids, format, include_timecode }),
+        });
+
+        if (res.status === 401) {
+            clearToken();
+            window.location.href = '/login';
+            throw new Error('Unauthorized');
+        }
+
+        if (!res.ok) {
+            const body = await res.text();
+            throw new Error(`API ${res.status}: ${body}`);
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+
+        let filename = `vigil_export.${format}`;
+        const contentDisposition = res.headers.get('Content-Disposition');
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (match && match[1]) filename = match[1];
+        }
+
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    },
+
     getCaptureUrl: (filepath: string) => {
         // filepath is like /data/captures/2024-10-27/09-00-00.jpg
         // We need to extract date and filename.
