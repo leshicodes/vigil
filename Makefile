@@ -35,9 +35,15 @@ help:
 
 build-multi:
 	docker buildx build --platform $(PLATFORMS) -t $(IMAGE):$(TAG) .
+	docker buildx build --platform linux/arm64 -t $(IMAGE):$(TAG)-rpi -f Dockerfile.pi .
 
 release:
 	docker buildx build --platform $(PLATFORMS) \
 		-t $(IMAGE):$(TAG) \
 		-t $(IMAGE):$(SHA) \
+		--push .
+	docker buildx build --platform linux/arm64 \
+		-t $(IMAGE):$(TAG)-rpi \
+		-t $(IMAGE):$(SHA)-rpi \
+		-f Dockerfile.pi \
 		--push .

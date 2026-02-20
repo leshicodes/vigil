@@ -26,17 +26,21 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /vigil .
 
 # ===========================================================================
-# Stage 3: Runtime
-# Using python:3.12-slim instead of Alpine because numpy/OpenCV wheels
-# are pre-built for Debian but need compilation on Alpine. This also gives
-# us Python out of the box for the analysis hook.
+# Stage 3: Runtime (Raspberry Pi Specific)
+# Using python:3.12-slim but pulling libcamera-apps from the official Pi repo
 # ===========================================================================
 FROM python:3.12-slim-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    gnupg \
+    && wget -qO /usr/share/keyrings/raspberrypi-archive-keyring.gpg https://archive.raspberrypi.com/debian/raspberrypi.gpg.key \
+    && echo "deb [trusted=yes] http://archive.raspberrypi.com/debian/ bookworm main" > /etc/apt/sources.list.d/raspi.list \
+    && apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true \
+    && apt-get install -y --no-install-recommends --allow-unauthenticated \
     ffmpeg \
-    fswebcam \
     ca-certificates \
+    libcamera-apps \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -g 1000 vigil \
     && useradd -u 1000 -g vigil -G video --create-home vigil

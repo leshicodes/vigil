@@ -27,10 +27,16 @@ func (l *LibCamera) Capture(outputPath string) error {
 	}
 	args = append(args, l.ExtraArgs...)
 
-	cmd := exec.Command("libcamera-still", args...)
+	// Raspberry Pi OS Debian 12 (Bookworm) and newer use rpicam-still
+	exe := "libcamera-still"
+	if _, err := exec.LookPath("rpicam-still"); err == nil {
+		exe = "rpicam-still"
+	}
+
+	cmd := exec.Command(exe, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("libcamera-still failed: %w\noutput: %s", err, string(output))
+		return fmt.Errorf("%s failed: %w\noutput: %s", exe, err, string(output))
 	}
 	return nil
 }

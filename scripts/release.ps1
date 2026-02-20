@@ -29,11 +29,24 @@ if ($Confirm -ne "y") {
     exit
 }
 
-Write-Host "Starting multi-platform build and push..." -ForegroundColor Yellow
+Write-Host "Starting multi-platform build and push (Standard)..." -ForegroundColor Yellow
 
 docker buildx build --platform $Platforms `
     -t "${Image}:${Tag}" `
     -t "${Image}:${Sha}" `
+    --push .
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nStandard release failed." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Starting ARM64 build and push (Raspberry Pi)..." -ForegroundColor Yellow
+
+docker buildx build --platform linux/arm64 `
+    -t "${Image}:${Tag}-rpi" `
+    -t "${Image}:${Sha}-rpi" `
+    -f Dockerfile.pi `
     --push .
 
 if ($LASTEXITCODE -eq 0) {
